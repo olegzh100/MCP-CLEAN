@@ -12,6 +12,8 @@ const LOGS = path.join(ROOT, "logs");
 const ACTIONS_LOG = path.join(LOGS, "actions.log");
 const TEMP = path.join(ROOT, "temp");
 const EXCHANGE = path.join(ROOT, "exchange");
+const EXCHANGE_PROJECTS = path.join(EXCHANGE, "projects");
+const EXCHANGE_REGISTRY = path.join(EXCHANGE, "registry.json");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -32,7 +34,8 @@ async function bootstrap() {
     fs.mkdir(BACKUPS, { recursive: true }),
     fs.mkdir(LOGS, { recursive: true }),
     fs.mkdir(TEMP, { recursive: true }),
-    fs.mkdir(EXCHANGE, { recursive: true })
+    fs.mkdir(EXCHANGE, { recursive: true }),
+    fs.mkdir(EXCHANGE_PROJECTS, { recursive: true })
   ]);
   await fs.appendFile(ACTIONS_LOG, "", "utf8");
 }
@@ -86,9 +89,19 @@ async function loadConfig() {
   return config;
 }
 
+let allowedRootsState = [];
+
+async function saveConfig(config) {
+  await fs.writeFile(CONFIG, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+}
+
 function makeRootMatcher(allowedRoots) {
   const roots = allowedRoots.map(normalizePath);
   return target => roots.some(root => isWithinRoot(target, root));
+}
+
+function refreshAllowedRoots(nextRoots) {
+  allowedRootsState = nextRoots.map(normalizePath);
 }
 
 function assertAllowed(target, isAllowed) {
@@ -139,7 +152,7 @@ async function resolveGitCommand() {
 
 async function runGit(cwd, args) {
   const command = await resolveGitCommand();
-  return await runCommand(command, ["-C", cwd, ...args], ROOT);
+  return await runCommand(command, ["-c", `safe.directory=${cwd}`, "-C", cwd, ...args], ROOT);
 }
 
 async function gitAvailable() {
@@ -279,6 +292,132 @@ async function logAction(tool, project, action, result) {
   await fs.appendFile(ACTIONS_LOG, `${new Date().toISOString()} | ${tool} | ${project || ""} | ${action} | ${result}\n`, "utf8");
 }
 
+async function readRegistry() {
+  const raw = await fs.readFile(EXCHANGE_REGISTRY, "utf8").catch(() => "{}");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+async function writeRegistry(registry) {
+  await fs.writeFile(EXCHANGE_REGISTRY, `${JSON.stringify(registry, null, 2)}\n`, "utf8");
+}
+
+async function ensureProjectControlStructure(projectName) {
+  const projectDir = path.join(EXCHANGE_PROJECTS, projectName);
+  await fs.mkdir(projectDir, { recursive: true });
+  await fs.mkdir(path.join(projectDir, "incoming"), { recursive: true });
+  await fs.mkdir(path.join(projectDir, "outgoing"), { recursive: true });
+  await fs.mkdir(path.join(projectDir, "notes"), { recursive: true });
+  await fs.writeFile(
+    path.join(projectDir, "README.txt"),
+    [
+      `Project: ${projectName}`,
+      "Managed by MCP-CLEAN.",
+      "incoming/ - inbound files",
+      "outgoing/ - outbound files",
+      "notes/ - project notes"
+    ].join("\n") + "\n",
+    "utf8"
+  );
+  return projectDir;
+}
+
+async function listProjectControlFiles(projectName) {
+  const projectDir = path.join(EXCHANGE_PROJECTS, projectName);
+  const entries = await fs.readdir(projectDir).catch(() => []);
+  return entries;
+}
+
+async function updateAllowedRoots(nextRoots) {
+  const current = await loadConfig();
+  current.readWrite = nextRoots;
+  await saveConfig(current);
+  return current;
+}
+
+async function registerProject(projectName, projectPath, dryRun = false) {
+  const exists = await fs.stat(projectPath).then(s => s.isDirectory()).catch(() => false);
+  const safe = isWithinRoot(projectPath, ROOT) || isWithinRoot(projectPath, "C:\\Users\\oleg\\codex-test");
+  if (!safe) {
+    throw createError("INVALID_ARGUMENT", "Project path is outside safe locations", { projectPath });
+  }
+  const git = exists ? await gitStatus(projectPath) : { isGit: false, hasRemote: false, originConnected: false, branch: null, lastCommit: null, status: "missing" };
+  const nextRoots = Array.from(new Set([...allowedRootsState, normalizePath(projectPath)]));
+  const projectDir = path.join(EXCHANGE_PROJECTS, projectName);
+  const checkpointPreview = {
+    projectPath,
+    projectName,
+    message: `Register project ${projectName}`
+  };
+
+  if (dryRun) {
+    return {
+      dryRun: true,
+      exists,
+      access: exists,
+      safe,
+      git,
+      nextRoots,
+      exchangeProjectDir: projectDir,
+      checkpointPreview
+    };
+  }
+
+  await updateAllowedRoots(nextRoots);
+  refreshAllowedRoots(nextRoots);
+  await ensureProjectControlStructure(projectName);
+  let checkpoint = null;
+  let checkpointError = null;
+  try {
+    checkpoint = await gitCheckpoint(ROOT, `Register project ${projectName}`, false);
+  } catch (error) {
+    checkpointError = `${error.code || "ERROR"}: ${error.message || String(error)}`;
+  }
+  const registry = await readRegistry();
+  registry[projectName] = {
+    path: normalizePath(projectPath),
+    registeredAt: new Date().toISOString()
+  };
+  await writeRegistry(registry);
+  await logAction("register_project", projectName, "register", "ok");
+  return {
+    dryRun: false,
+    exists,
+    safe,
+    git,
+    exchangeProjectDir: projectDir,
+    checkpoint,
+    checkpointError
+  };
+}
+
+async function unregisterProject(projectName, projectPath, dryRun = false) {
+  const registry = await readRegistry();
+  const nextRoots = allowedRootsState.filter(root => normalizePath(root) !== normalizePath(projectPath));
+  if (dryRun) {
+    return {
+      dryRun: true,
+      projectName,
+      projectPath,
+      nextRoots
+    };
+  }
+  await updateAllowedRoots(nextRoots);
+  refreshAllowedRoots(nextRoots);
+  delete registry[projectName];
+  await writeRegistry(registry);
+  await logAction("unregister_project", projectName, "unregister", "ok");
+  return {
+    dryRun: false,
+    projectName,
+    projectPath,
+    nextRoots
+  };
+}
+
 async function restoreCommit(projectPath, commit, dryRun = false) {
   const before = await gitStatus(projectPath);
   const checkpoint = await archiveProject(projectPath);
@@ -295,6 +434,25 @@ async function systemStatus(projects) {
     results.push({ name, path: projectPath, exists, ...git });
   }
   return results;
+}
+
+async function currentManagedProjects() {
+  const latest = await loadConfig();
+  const registry = await readRegistry();
+  const roots = latest.readWrite.map(normalizePath);
+  const projects = [];
+  for (const root of roots) {
+    const name = path.basename(root);
+    if (MANAGED_PROJECTS.includes(name) || registry[name]) {
+      projects.push({ name, path: root });
+    }
+  }
+  for (const [name, entry] of Object.entries(registry)) {
+    if (!projects.some(project => project.name === name)) {
+      projects.push({ name, path: normalizePath(entry.path) });
+    }
+  }
+  return projects;
 }
 
 async function projectScan(projectPath, dryRun = false) {
@@ -378,7 +536,8 @@ async function loadAllowedProjects(config) {
 await bootstrap();
 const config = await loadConfig();
 const { allowed, projectMap } = await loadAllowedProjects(config);
-const isAllowed = makeRootMatcher(allowed);
+refreshAllowedRoots(allowed);
+const isAllowed = target => makeRootMatcher(allowedRootsState)(target);
 const managedProjects = [...projectMap.entries()].map(([name, projectPath]) => ({ name, path: projectPath }));
 
 const server = new Server({ name: "mcp-clean", version: "1.4.0" }, { capabilities: { tools: {} } });
@@ -417,7 +576,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     { name: "restore_project", description: "Откат проекта к выбранному commit", inputSchema: { type: "object", properties: { path: { type: "string" }, commit: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
     { name: "system_status", description: "Одна команда для проверки всей системы проектов", inputSchema: { type: "object", properties: {} } },
     { name: "project_scan", description: "Глубокая проверка структуры проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
-    { name: "safe_change", description: "Подготовка перед изменением проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path", "message"] } }
+    { name: "safe_change", description: "Подготовка перед изменением проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path", "message"] } },
+    { name: "register_project", description: "Безопасное добавление нового проекта в систему MCP-CLEAN", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } },
+    { name: "unregister_project", description: "Удаление проекта из контроля MCP без удаления файлов", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } }
   ]
 }));
 
@@ -512,7 +673,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     }
 
     if (name === "system_status") {
-      return { content: [{ type: "text", text: normalizeToolResult({ projects: await systemStatus(managedProjects) }) }] };
+      return { content: [{ type: "text", text: normalizeToolResult({ projects: await systemStatus(await currentManagedProjects()) }) }] };
     }
 
     if (name === "project_scan") {
@@ -525,6 +686,22 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       const message = String(args.message || "").trim();
       if (!message) throw createError("INVALID_ARGUMENT", "message is required");
       const result = await safeChange(projectPath, message, Boolean(args.dryRun));
+      return { content: [{ type: "text", text: normalizeToolResult(result) }] };
+    }
+
+    if (name === "register_project") {
+      const projectName = String(args.name || "").trim();
+      const projectPath = assertAllowed(args.path, isAllowed);
+      if (!projectName) throw createError("INVALID_ARGUMENT", "name is required");
+      const result = await registerProject(projectName, projectPath, Boolean(args.dryRun));
+      return { content: [{ type: "text", text: normalizeToolResult(result) }] };
+    }
+
+    if (name === "unregister_project") {
+      const projectName = String(args.name || "").trim();
+      const projectPath = assertAllowed(args.path, isAllowed);
+      if (!projectName) throw createError("INVALID_ARGUMENT", "name is required");
+      const result = await unregisterProject(projectName, projectPath, Boolean(args.dryRun));
       return { content: [{ type: "text", text: normalizeToolResult(result) }] };
     }
 

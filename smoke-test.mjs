@@ -8,18 +8,36 @@ const root = "F:\\MCP-CLEAN";
 const serverPath = path.join(root, "server.mjs");
 const allowedFile = path.join(root, "package.json");
 const forbiddenFile = path.join(os.homedir(), "Desktop", "forbidden-mcp-clean-test.txt");
+const tempProject = path.join(root, "temp", "registry-smoke-project");
+const tempProjectName = "registry-smoke-project";
 
 function fail(message) {
   throw new Error(message);
 }
 
+function parseToolJson(text) {
+  const raw = String(text || "").trim();
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error(`Expected JSON, got: ${raw.slice(0, 120)}`);
+  }
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
 async function callJson(client, name, arguments_) {
   const result = await client.callTool({ name, arguments: arguments_ });
-  return JSON.parse(String(result.content?.[0]?.text || "{}"));
+  return parseToolJson(result.content?.[0]?.text || "{}");
 }
 
 async function main() {
   await fs.access(allowedFile);
+  await fs.mkdir(tempProject, { recursive: true });
+  await fs.writeFile(
+    path.join(tempProject, "README.md"),
+    "# registry smoke project\n",
+    "utf8"
+  );
 
   const transport = new StdioClientTransport({
     command: process.execPath,
@@ -67,6 +85,43 @@ async function main() {
       fail("git_status_all returned unexpected result");
     }
 
+    const registerPreview = await callJson(client, "register_project", {
+      name: tempProjectName,
+      path: tempProject,
+      dryRun: true
+    });
+    if (!registerPreview.dryRun || registerPreview.exchangeProjectDir !== path.join(root, "exchange", "projects", tempProjectName)) {
+      fail("register_project dryRun returned unexpected result");
+    }
+
+    const registerResult = await callJson(client, "register_project", {
+      name: tempProjectName,
+      path: tempProject,
+      dryRun: false
+    });
+    if (registerResult.dryRun !== false || registerResult.exchangeProjectDir !== path.join(root, "exchange", "projects", tempProjectName)) {
+      fail("register_project returned unexpected result");
+    }
+
+    const systemAfterRegister = await callJson(client, "system_status", {});
+    if (!systemAfterRegister.projects.some(project => project.name === tempProjectName)) {
+      fail("registered project was not visible in system_status");
+    }
+
+    const unregisterResult = await callJson(client, "unregister_project", {
+      name: tempProjectName,
+      path: tempProject,
+      dryRun: false
+    });
+    if (unregisterResult.dryRun !== false) {
+      fail("unregister_project returned unexpected result");
+    }
+
+    const systemAfterUnregister = await callJson(client, "system_status", {});
+    if (systemAfterUnregister.projects.some(project => project.name === tempProjectName)) {
+      fail("unregister_project rollback did not remove project from system_status");
+    }
+
     const backupPreview = await callJson(client, "backup_project", { path: root, dryRun: true });
     if (!backupPreview.dryRun || backupPreview.projectPath !== root) {
       fail("backup_project dryRun returned unexpected result");
@@ -88,6 +143,7 @@ async function main() {
     try {
       await client.close();
     } catch {}
+    await fs.rm(tempProject, { recursive: true, force: true });
   }
 }
 

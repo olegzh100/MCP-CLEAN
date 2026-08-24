@@ -5,12 +5,12 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 ## Архитектура MCP-CLEAN
 
 - `server.mjs` - MCP server and tool implementations
-- `config/allowed-roots.json` - allowed project roots
+- `config/allowed-roots.json` - source of allowed project roots
 - `backups/` - project archives and file backups
 - `logs/` - operational logs
 - `logs/actions.log` - action audit trail
+- `exchange/projects/<project-name>/` - control structure per project
 - `temp/` - temporary runtime files
-- `exchange/` - exchange metadata and project notes
 - `smoke-test.mjs` - local smoke test
 
 ## Все доступные инструменты
@@ -28,13 +28,23 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `system_status`
 - `project_scan`
 - `safe_change`
+- `register_project`
+- `unregister_project`
 
 ## Работа с проектами
 
 - Все операции ограничены путями из `config/allowed-roots.json`.
-- `system_status` и `git_status_all` работают только по разрешенным проектам.
+- `system_status` автоматически показывает текущие зарегистрированные проекты.
 - `project_scan` выполняет глубокую проверку структуры без изменения файлов.
 - `safe_change` подготавливает проект через backup и checkpoint.
+
+## Подключение новых проектов
+
+1. Вызвать `register_project` с `name` и `path`.
+2. При необходимости сначала использовать `dryRun: true`.
+3. После успешной регистрации проект добавляется в `allowed-roots.json`.
+4. Создается структура `exchange/projects/<project-name>/`.
+5. Для Git-проектов фиксируются branch, last commit и remote.
 
 ## Backup
 
@@ -64,5 +74,6 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 2. Посмотреть систему через `system_status`.
 3. Проанализировать проект через `project_scan`.
 4. Подготовить изменение через `safe_change`.
-5. При необходимости создать checkpoint через `git_checkpoint`.
-6. При необходимости откатить проект через `restore_project`.
+5. Зарегистрировать новый проект через `register_project`.
+6. При необходимости создать checkpoint через `git_checkpoint`.
+7. При необходимости откатить проект через `restore_project`.
