@@ -95,6 +95,7 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `deploy_prepare` создает backup, checkpoint и проверяет Git перед публикацией.
 - `deploy_history` показывает последние публикации по сайтам.
 - Реальный deploy не выполняется без явной команды.
+- `config/deploy.json` хранит список сайтов, включая `выпускной-альбом.москва`, `kids.ostankino-studio.ru`, `Site-universe` и `Site-wedding`.
 
 ## Восстановление после сбоя MCP
 

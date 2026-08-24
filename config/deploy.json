@@ -1,11 +1,41 @@
 {
   "sites": [
     {
-      "site": "https://example.com",
-      "server": "default",
-      "type": "static",
+      "site": "https://выпускной-альбом.москва",
+      "server": "site-host",
+      "type": "site",
       "gitRemote": "",
-      "projectPath": "F:\\MCP-CLEAN",
+      "projectPath": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-PROD",
+      "lastDeploy": "",
+      "lastCommit": "",
+      "result": ""
+    },
+    {
+      "site": "https://kids.ostankino-studio.ru",
+      "server": "site-host",
+      "type": "site",
+      "gitRemote": "",
+      "projectPath": "C:\\Users\\oleg\\codex-test\\Site-wedding",
+      "lastDeploy": "",
+      "lastCommit": "",
+      "result": ""
+    },
+    {
+      "site": "https://Site-universe",
+      "server": "site-host",
+      "type": "site",
+      "gitRemote": "https://github.com/olegzh100/Site-universe.git",
+      "projectPath": "C:\\Users\\oleg\\codex-test\\Site-universe",
+      "lastDeploy": "",
+      "lastCommit": "",
+      "result": ""
+    },
+    {
+      "site": "https://Site-wedding",
+      "server": "site-host",
+      "type": "site",
+      "gitRemote": "",
+      "projectPath": "C:\\Users\\oleg\\codex-test\\Site-wedding",
       "lastDeploy": "",
       "lastCommit": "",
       "result": ""
