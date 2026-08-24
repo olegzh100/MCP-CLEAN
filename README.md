@@ -81,6 +81,21 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `browser_restore` восстанавливает сохранённые вкладки из `config/browser-state.json`.
 - Безопасность ограничивает работу разрешёнными сайтами и запрещает удаление профилей, очистку cookies, выход из аккаунтов и изменение паролей.
 
+## CRM Module
+
+- `crm_status` проверяет CRM backend, API, HTTPS и состояние проекта.
+- `crm_api_check` проверяет `/health` и пишет результат в `logs/crm.log`.
+- `crm_leads_check` читает состояние лидов без изменения данных.
+- `crm_checkpoint` использует backup и git checkpoint перед изменениями CRM.
+
+## Deploy Module
+
+- `deploy_status` показывает сайты, сервер и последнее состояние публикации.
+- `deploy_check` проверяет доступность сайта, HTTPS, HTTP статус и время ответа.
+- `deploy_prepare` создает backup, checkpoint и проверяет Git перед публикацией.
+- `deploy_history` показывает последние публикации по сайтам.
+- Реальный deploy не выполняется без явной команды.
+
 ## Восстановление после сбоя MCP
 
 1. Если MCP недоступен, откройте `config/recovery.json` как последний локальный снимок состояния.

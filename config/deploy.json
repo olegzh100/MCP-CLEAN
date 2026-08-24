@@ -1,0 +1,14 @@
+{
+  "sites": [
+    {
+      "site": "https://example.com",
+      "server": "default",
+      "type": "static",
+      "gitRemote": "",
+      "projectPath": "F:\\MCP-CLEAN",
+      "lastDeploy": "",
+      "lastCommit": "",
+      "result": ""
+    }
+  ]
+}

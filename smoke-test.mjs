@@ -145,6 +145,31 @@ async function main() {
       fail("browser-state.json could not be read");
     }
 
+    const crmStatus = await callJson(client, "crm_status", { dryRun: true });
+    if (!crmStatus.dryRun || typeof crmStatus.crm !== "string" || typeof crmStatus.api !== "string") {
+      fail("crm_status dryRun returned unexpected result");
+    }
+
+    const crmApi = await callJson(client, "crm_api_check", { dryRun: true });
+    if (!crmApi.dryRun || typeof crmApi.ok !== "boolean") {
+      fail("crm_api_check dryRun returned unexpected result");
+    }
+
+    const crmLeads = await callJson(client, "crm_leads_check", { dryRun: true });
+    if (!crmLeads.dryRun || !("project" in crmLeads)) {
+      fail("crm_leads_check dryRun returned unexpected result");
+    }
+
+    const deployStatus = await callJson(client, "deploy_status", { dryRun: true });
+    if (!deployStatus.dryRun || !Array.isArray(deployStatus.sites)) {
+      fail("deploy_status dryRun returned unexpected result");
+    }
+
+    const deployCheck = await callJson(client, "deploy_check", { dryRun: true });
+    if (!deployCheck.dryRun || !Array.isArray(deployCheck.checks)) {
+      fail("deploy_check dryRun returned unexpected result");
+    }
+
     const syncState = await callJson(client, "sync_project_state", { path: root, dryRun: true });
     if (syncState.path !== root || !syncState.local || !syncState.remote || !syncState.difference) {
       fail("sync_project_state dryRun returned unexpected result");

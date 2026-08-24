@@ -19,10 +19,14 @@ const GITHUB_REGISTRY = path.join(ROOT, "config", "github-registry.json");
 const RECOVERY_CONFIG = path.join(ROOT, "config", "recovery.json");
 const BROWSER_CONFIG = path.join(ROOT, "config", "browser.json");
 const BROWSER_STATE = path.join(ROOT, "config", "browser-state.json");
+const CRM_CONFIG = path.join(ROOT, "config", "crm.json");
+const DEPLOY_CONFIG = path.join(ROOT, "config", "deploy.json");
 const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
 const PROJECTS_LOG = path.join(LOGS, "projects.log");
 const RECOVERY_LOG = path.join(LOGS, "recovery.log");
 const BROWSER_LOG = path.join(LOGS, "browser.log");
+const CRM_LOG = path.join(LOGS, "crm.log");
+const DEPLOY_LOG = path.join(LOGS, "deploy.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -55,6 +59,8 @@ async function bootstrap() {
   await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
   await fs.writeFile(BROWSER_CONFIG, await fs.readFile(BROWSER_CONFIG, "utf8").catch(() => "{\"browser\":\"Edge\",\"profile\":\"Default\",\"allowedSites\":[\"eLama\",\"Яндекс Директ\",\"CRM\",\"GitHub\",\"Firebase\"]}\n"), "utf8").catch(() => {});
   await fs.writeFile(BROWSER_STATE, await fs.readFile(BROWSER_STATE, "utf8").catch(() => "{\"lastSavedAt\":\"\",\"profile\":\"Default\",\"tabs\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(CRM_CONFIG, await fs.readFile(CRM_CONFIG, "utf8").catch(() => "{\"projectPath\":\"C:\\\\Users\\\\oleg\\\\codex-test\\\\CRM\",\"apiUrl\":\"\",\"healthUrl\":\"\",\"githubRemote\":\"https://github.com/olegzh100/CRM.git\"}\n"), "utf8").catch(() => {});
+  await fs.writeFile(DEPLOY_CONFIG, await fs.readFile(DEPLOY_CONFIG, "utf8").catch(() => "{\"sites\":[{\"site\":\"https://example.com\",\"server\":\"default\",\"type\":\"static\",\"gitRemote\":\"\"}]}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -191,6 +197,42 @@ async function loadBrowserConfig() {
   }
 }
 
+async function loadCrmConfig() {
+  const raw = await fs.readFile(CRM_CONFIG, "utf8").catch(() => "{\"projectPath\":\"C:\\\\Users\\\\oleg\\\\codex-test\\\\CRM\",\"apiUrl\":\"\",\"healthUrl\":\"\",\"githubRemote\":\"https://github.com/olegzh100/CRM.git\"}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      projectPath: parsed.projectPath || "C:\\Users\\oleg\\codex-test\\CRM",
+      apiUrl: parsed.apiUrl || "",
+      healthUrl: parsed.healthUrl || "",
+      githubRemote: parsed.githubRemote || ""
+    };
+  } catch {
+    return { projectPath: "C:\\Users\\oleg\\codex-test\\CRM", apiUrl: "", healthUrl: "", githubRemote: "" };
+  }
+}
+
+async function loadDeployConfig() {
+  const raw = await fs.readFile(DEPLOY_CONFIG, "utf8").catch(() => "{\"sites\":[{\"site\":\"https://example.com\",\"server\":\"default\",\"type\":\"static\",\"gitRemote\":\"\"}]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return { sites: Array.isArray(parsed?.sites) ? parsed.sites : [] };
+  } catch {
+    return { sites: [] };
+  }
+}
+
+async function httpCheck(url, timeoutMs = 4000) {
+  if (!url) return { ok: false, status: null, timeMs: null, error: "missing url" };
+  const started = Date.now();
+  try {
+    const response = await fetch(url, { method: "GET" });
+    return { ok: response.ok, status: response.status, timeMs: Date.now() - started, error: "" };
+  } catch (error) {
+    return { ok: false, status: null, timeMs: Date.now() - started, error: error?.message || "request failed" };
+  }
+}
+
 async function saveBrowserState(data) {
   await fs.writeFile(BROWSER_STATE, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
@@ -290,6 +332,95 @@ async function browserRestore() {
   }
   await fs.appendFile(BROWSER_LOG, `${new Date().toISOString()} | restore | ${restoredTabs.length}\n`, "utf8");
   return { restored: restoredTabs.length, profile: state.profile || config.profile || "Default", tabs: restoredTabs };
+}
+
+async function crmApiCheck(dryRun = false) {
+  const config = await loadCrmConfig();
+  const url = config.healthUrl || config.apiUrl || "";
+  if (dryRun) {
+    return { dryRun: true, url, endpointAvailable: Boolean(url), statusCode: null, timeMs: null, ok: Boolean(url) };
+  }
+  const result = await httpCheck(url);
+  await logCrm("api_check", `${url} | ${result.status || "ERR"} | ${result.timeMs || 0}ms`);
+  return { dryRun: false, url, endpointAvailable: Boolean(url), statusCode: result.status, timeMs: result.timeMs, ok: result.ok };
+}
+
+async function crmLeadsCheck(dryRun = false) {
+  const config = await loadCrmConfig();
+  const projectPath = config.projectPath;
+  const git = await gitStatus(projectPath);
+  const payload = {
+    dryRun,
+    available: Boolean(projectPath),
+    newLeads: dryRun ? 0 : null,
+    lastLead: dryRun ? "" : null,
+    transferErrors: [],
+    project: git
+  };
+  await logCrm("leads_check", dryRun ? "dryRun" : "checked");
+  return payload;
+}
+
+async function crmStatus(dryRun = false) {
+  const config = await loadCrmConfig();
+  const project = await gitStatus(config.projectPath);
+  const api = await crmApiCheck(true);
+  const httpsOk = String(config.healthUrl || config.apiUrl || "").startsWith("https://");
+  const backendAvailable = Boolean(config.apiUrl || config.healthUrl);
+  return {
+    dryRun,
+    crm: project.isGit && project.status !== "unknown" ? "OK" : "ERROR",
+    api: api.ok ? "OK" : "ERROR",
+    https: httpsOk ? "OK" : "ERROR",
+    services: project.isGit ? "OK" : "ERROR",
+    project: project,
+    backendAvailable,
+    lastCommit: project.lastCommit,
+    branch: project.branch,
+    remote: config.githubRemote || project.hasRemote
+  };
+}
+
+async function crmCheckpoint(dryRun = false) {
+  const config = await loadCrmConfig();
+  const backup = await backupProjectInfo(config.projectPath);
+  const checkpoint = await gitCheckpoint(config.projectPath, `CRM checkpoint ${new Date().toISOString().slice(0, 16).replace("T", " ")}`, dryRun);
+  await logCrm("checkpoint", dryRun ? "dryRun" : `${backup.archivePath} | ${checkpoint.commitHash || ""}`);
+  return { dryRun, backup, checkpoint };
+}
+
+async function deployStatus(dryRun = false) {
+  const config = await loadDeployConfig();
+  const sites = [];
+  for (const site of config.sites) {
+    const result = { site: site.site, server: site.server || "", type: site.type || "", gitRemote: site.gitRemote || "", state: "unknown", lastDeploy: site.lastDeploy || "" };
+    sites.push(result);
+  }
+  return { dryRun, sites };
+}
+
+async function deployCheck(dryRun = false) {
+  const config = await loadDeployConfig();
+  const checks = [];
+  for (const site of config.sites) {
+    const probe = dryRun ? { ok: Boolean(site.site), status: null, timeMs: null } : await httpCheck(site.site);
+    checks.push({ site: site.site, https: String(site.site || "").startsWith("https://") ? "OK" : "ERROR", status: probe.status, timeMs: probe.timeMs, available: probe.ok });
+  }
+  return { dryRun, checks };
+}
+
+async function deployPrepare(dryRun = false) {
+  const config = await loadDeployConfig();
+  const projectPath = config.sites[0]?.projectPath || "F:\\MCP-CLEAN";
+  const backup = await backupProjectInfo(projectPath);
+  const checkpoint = await gitCheckpoint(projectPath, `Deploy prepare ${new Date().toISOString().slice(0, 16).replace("T", " ")}`, dryRun);
+  await logDeploy("prepare", dryRun ? "dryRun" : `${backup.archivePath} | ${checkpoint.commitHash || ""}`);
+  return { dryRun, backup, checkpoint, git: await gitStatus(projectPath) };
+}
+
+async function deployHistory() {
+  const config = await loadDeployConfig();
+  return { sites: config.sites.map(site => ({ site: site.site, lastDeploy: site.lastDeploy || "", commit: site.lastCommit || "", result: site.result || "" })) };
 }
 
 let allowedRootsState = [];
@@ -497,6 +628,14 @@ async function logAction(tool, project, action, result) {
 
 async function logProject(action, project, result) {
   await fs.appendFile(PROJECTS_LOG, `${new Date().toISOString()} | ${action} | ${project || ""} | ${result}\n`, "utf8");
+}
+
+async function logCrm(action, result) {
+  await fs.appendFile(CRM_LOG, `${new Date().toISOString()} | ${action} | ${result}\n`, "utf8");
+}
+
+async function logDeploy(action, result) {
+  await fs.appendFile(DEPLOY_LOG, `${new Date().toISOString()} | ${action} | ${result}\n`, "utf8");
 }
 
 async function gitRemoteState(projectPath) {
@@ -1166,6 +1305,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ,{ name: "browser_open", description: "Открытие URL в существующем Edge", inputSchema: { type: "object", properties: { url: { type: "string" }, newTab: { type: "boolean", default: true } }, required: ["url"] } }
     ,{ name: "browser_checkpoint", description: "Сохранение состояния браузера", inputSchema: { type: "object", properties: {} } }
     ,{ name: "browser_restore", description: "Восстановление сохранённого состояния браузера", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "crm_status", description: "Проверка состояния CRM", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "crm_api_check", description: "Проверка CRM API /health", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "crm_leads_check", description: "Проверка лидов CRM", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "crm_checkpoint", description: "CRM checkpoint через backup и git checkpoint", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "deploy_status", description: "Статус сайтов и deploy state", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "deploy_check", description: "Проверка доступности сайта и HTTPS", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "deploy_prepare", description: "Подготовка к deploy через backup и checkpoint", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "deploy_history", description: "История последних публикаций", inputSchema: { type: "object", properties: {} } }
   ]
 }));
 
@@ -1355,6 +1502,38 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
     if (name === "browser_restore") {
       return { content: [{ type: "text", text: normalizeToolResult(await browserRestore()) }] };
+    }
+
+    if (name === "crm_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await crmStatus(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "crm_api_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await crmApiCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "crm_leads_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await crmLeadsCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "crm_checkpoint") {
+      return { content: [{ type: "text", text: normalizeToolResult(await crmCheckpoint(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "deploy_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await deployStatus(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "deploy_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await deployCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "deploy_prepare") {
+      return { content: [{ type: "text", text: normalizeToolResult(await deployPrepare(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "deploy_history") {
+      return { content: [{ type: "text", text: normalizeToolResult(await deployHistory()) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");
