@@ -12,32 +12,48 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `exchange/` - exchange metadata and project notes
 - `smoke-test.mjs` - local smoke test
 
-## Tools
+## MCP Tools
 
-- `ping` - basic liveness check
-- `list_directory` - list files in an allowed directory
-- `read_file` - read a file from an allowed root
-- `write_file` - write a file with a timestamped backup
-- `project_status` - inspect git state for an allowed project
-- `backup_project` - create a timestamped zip archive in `backups/`
-- `health_check` - verify core MCP-CLEAN paths and tool availability
+- `ping`
+- `list_directory`
+- `read_file`
+- `write_file`
+- `project_status`
+- `backup_project`
+- `health_check`
+- `git_status_all`
+- `git_checkpoint`
+- `restore_project`
 
 ## Access Rules
 
 - Only paths under `config/allowed-roots.json` are allowed.
-- Working projects are not modified by status or backup checks.
+- Working projects are not modified by status checks.
 - `backup_project` stores archives only in `backups/`.
-- `write_file` stores file-level backups only in `backups/`.
+- `git_checkpoint` and `restore_project` operate only on `F:\MCP-CLEAN`.
+- `restore_project` creates a backup before rollback.
 
-## Backups
+## Checkpoints
 
-- Project archives are created in `F:\MCP-CLEAN\backups`.
-- File backups created by `write_file` are also stored there.
-- Archive names and file backup names include a timestamp to avoid collisions.
+- `git_checkpoint` stages all changes, creates a commit, and pushes `origin main`.
+- Use `dryRun: true` to preview the operation without changing state.
 
 ## Rollback
 
-1. Inspect the relevant archive or file backup in `backups/`.
-2. Restore the needed files into the project root manually.
-3. Run `health_check` and `project_status` again.
-4. Use `smoke-test.mjs` before committing changes.
+- `restore_project` lists recent checkpoint commits when `commit` is omitted.
+- Provide a commit hash to restore that checkpoint.
+- The tool creates a backup archive first, then resets the project to the selected commit.
+
+## Backups
+
+- Project archives and file backups are stored in `F:\MCP-CLEAN\backups`.
+- Archive names include timestamps to avoid collisions.
+- Backup results include project info, archive size, and the current list of backup archives.
+
+## Scheme
+
+1. Read health with `health_check`.
+2. Inspect projects with `project_status` or `git_status_all`.
+3. Create a checkpoint with `git_checkpoint`.
+4. Roll back with `restore_project` when needed.
+5. Verify with `smoke-test.mjs` before committing.

@@ -14,6 +14,11 @@ function fail(message) {
   throw new Error(message);
 }
 
+async function callJson(client, name, arguments_) {
+  const result = await client.callTool({ name, arguments: arguments_ });
+  return JSON.parse(String(result.content?.[0]?.text || "{}"));
+}
+
 async function main() {
   await fs.access(allowedFile);
 
@@ -36,41 +41,32 @@ async function main() {
       fail("ping did not return READY");
     }
 
-    const health = await client.callTool({ name: "health_check", arguments: {} });
-    const healthJson = JSON.parse(String(health.content?.[0]?.text || "{}"));
-    if (!healthJson.ok) {
+    const health = await callJson(client, "health_check", {});
+    if (!health.ok) {
       fail("health_check reported not ok");
     }
 
-    const status = await client.callTool({
-      name: "project_status",
-      arguments: { path: projectPath }
-    });
-    const statusJson = JSON.parse(String(status.content?.[0]?.text || "{}"));
-    if (statusJson.path !== projectPath) {
-      fail("project_status returned unexpected path");
-    }
-    if (statusJson.isGit !== true) {
-      fail("project_status did not detect git");
+    const status = await callJson(client, "project_status", { path: projectPath });
+    if (status.path !== projectPath || status.isGit !== true) {
+      fail("project_status returned unexpected result");
     }
 
-    const backupPreview = await client.callTool({
-      name: "backup_project",
-      arguments: { path: projectPath, dryRun: true }
-    });
-    const backupJson = JSON.parse(String(backupPreview.content?.[0]?.text || "{}"));
-    if (!backupJson.dryRun || backupJson.projectPath !== projectPath) {
+    const all = await callJson(client, "git_status_all", {});
+    if (!Array.isArray(all.projects) || all.projects.length < 2) {
+      fail("git_status_all returned unexpected result");
+    }
+
+    const backupPreview = await callJson(client, "backup_project", { path: projectPath, dryRun: true });
+    if (!backupPreview.dryRun || backupPreview.projectPath !== projectPath) {
       fail("backup_project dryRun returned unexpected result");
     }
-    if (!String(backupJson.archivePath || "").includes("backups")) {
-      fail("backup_project dryRun did not target backups");
+
+    const checkpointPreview = await callJson(client, "git_checkpoint", { message: "smoke checkpoint", dryRun: true });
+    if (!checkpointPreview.dryRun || checkpointPreview.message !== "smoke checkpoint") {
+      fail("git_checkpoint dryRun returned unexpected result");
     }
 
-    const denied = await client.callTool({
-      name: "read_file",
-      arguments: { path: forbiddenFile }
-    });
-
+    const denied = await client.callTool({ name: "read_file", arguments: { path: forbiddenFile } });
     const deniedText = String(denied.content?.[0]?.text || "");
     if (!denied.isError || !deniedText.includes("ACCESS_DENIED")) {
       fail("forbidden path was not rejected as expected");

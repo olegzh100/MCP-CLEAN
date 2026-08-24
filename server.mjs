@@ -20,6 +20,15 @@ const GIT_CANDIDATES = [
   "C:\\Program Files\\Git\\cmd\\git.exe",
   "C:\\Program Files\\Git\\bin\\git.exe"
 ];
+const PROJECT_NAMES = [
+  "CRM",
+  "CRM-Mobile-2",
+  "MBA-ALBUMS",
+  "mba-academy-site",
+  "Site-universe",
+  "Content-Automation",
+  "MCP-CLEAN"
+];
 
 async function bootstrap() {
   await Promise.all([
@@ -45,9 +54,7 @@ function createError(code, message, data) {
   const error = new Error(message);
   error.name = code;
   error.code = code;
-  if (data !== undefined) {
-    error.data = data;
-  }
+  if (data !== undefined) error.data = data;
   return error;
 }
 
@@ -104,39 +111,25 @@ function assertAllowed(target, isAllowed) {
   return resolved;
 }
 
-async function readJson(filePath) {
-  const raw = await fs.readFile(filePath, "utf8");
-  return JSON.parse(raw);
-}
-
-async function runGit(cwd, args) {
-  const command = await resolveGitCommand();
-
+async function runCommand(command, args, cwd) {
   return await new Promise((resolve, reject) => {
-    const child = spawn(command, ["-C", cwd, ...args], {
+    const child = spawn(command, args, {
+      cwd,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"]
     });
-
     let stdout = "";
     let stderr = "";
-
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
-
-    child.stdout.on("data", chunk => {
-      stdout += chunk;
-    });
-    child.stderr.on("data", chunk => {
-      stderr += chunk;
-    });
-
+    child.stdout.on("data", chunk => { stdout += chunk; });
+    child.stderr.on("data", chunk => { stderr += chunk; });
     child.on("error", reject);
     child.on("close", code => {
       if (code === 0) {
-        resolve({ stdout, stderr, code });
+        resolve({ code, stdout, stderr });
       } else {
-        const err = new Error(stderr.trim() || `git exited with code ${code}`);
+        const err = new Error(stderr.trim() || `${command} exited with code ${code}`);
         err.code = code;
         err.stdout = stdout;
         err.stderr = stderr;
@@ -148,17 +141,27 @@ async function runGit(cwd, args) {
 
 async function resolveGitCommand() {
   for (const candidate of GIT_CANDIDATES) {
-    if (candidate === "git") {
-      return candidate;
-    }
-
+    if (candidate === "git") return candidate;
     try {
       await fs.access(candidate);
       return candidate;
     } catch {}
   }
-
   return "git";
+}
+
+async function runGit(cwd, args) {
+  const command = await resolveGitCommand();
+  return await runCommand(command, ["-C", cwd, ...args], ROOT);
+}
+
+async function gitAvailable() {
+  try {
+    await runGit(ROOT, ["--version"]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function gitStatus(projectPath) {
@@ -168,6 +171,7 @@ async function gitStatus(projectPath) {
     branch: null,
     lastCommit: null,
     dirty: null,
+    hasRemote: false,
     status: "unknown"
   };
 
@@ -175,8 +179,8 @@ async function gitStatus(projectPath) {
     await runGit(projectPath, ["rev-parse", "--show-toplevel"]);
     result.isGit = true;
   } catch {
-    const gitEntry = path.join(projectPath, ".git");
     try {
+      const gitEntry = path.join(projectPath, ".git");
       const stat = await fs.stat(gitEntry);
       result.isGit = stat.isFile() || stat.isDirectory();
     } catch {
@@ -200,64 +204,104 @@ async function gitStatus(projectPath) {
 
   try {
     const porcelain = await runGit(projectPath, ["status", "--porcelain"]);
-    const dirty = porcelain.stdout.trim().length > 0;
-    result.dirty = dirty;
-    result.status = dirty ? "modified" : "clean";
+    result.dirty = porcelain.stdout.trim().length > 0;
+    result.status = result.dirty ? "modified" : "clean";
   } catch {
     result.dirty = null;
     result.status = "unknown";
   }
 
+  try {
+    const remotes = await runGit(projectPath, ["remote"]);
+    result.hasRemote = remotes.stdout.trim().length > 0;
+  } catch {
+    result.hasRemote = false;
+  }
+
   return result;
+}
+
+async function listGitCheckpoints(projectPath, limit = 12) {
+  try {
+    const result = await runGit(projectPath, [
+      "log",
+      `--max-count=${limit}`,
+      "--pretty=format:%H|%h|%s|%cI"
+    ]);
+    return result.stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map(line => {
+        const [full, short, subject, iso] = line.split("|");
+        return { full, short, subject, iso };
+      });
+  } catch {
+    return [];
+  }
 }
 
 async function archiveProject(projectPath) {
   const archive = path.join(BACKUPS, archiveName(projectPath));
-  const parent = path.dirname(projectPath);
-  const base = path.basename(projectPath);
-  const result = await new Promise((resolve, reject) => {
-    const child = spawn("powershell.exe", [
+  const archiveDir = path.dirname(archive);
+  await fs.mkdir(archiveDir, { recursive: true });
+  const sourceRoot = path.join(projectPath, "*");
+  await runCommand(
+    "powershell.exe",
+    [
       "-NoProfile",
       "-Command",
-      `Compress-Archive -Path "${path.join(projectPath, "*")}" -DestinationPath "${archive}" -Force`
-    ], {
-      windowsHide: true,
-      stdio: ["ignore", "pipe", "pipe"]
-    });
+      `Compress-Archive -Path "${sourceRoot}" -DestinationPath "${archive}" -Force`
+    ],
+    ROOT
+  );
+  const stat = await fs.stat(archive);
+  return {
+    archivePath: archive,
+    projectPath,
+    sizeBytes: stat.size
+  };
+}
 
-    let stderr = "";
-    child.stderr.setEncoding("utf8");
-    child.stderr.on("data", chunk => {
-      stderr += chunk;
-    });
-    child.on("error", reject);
-    child.on("close", code => {
-      if (code === 0) {
-        resolve({ archive, base, parent });
-      } else {
-        const err = new Error(stderr.trim() || `backup failed with code ${code}`);
-        err.code = code;
-        reject(err);
-      }
-    });
-  });
-
-  return result;
+async function backupProjectInfo(projectPath) {
+  const info = await archiveProject(projectPath);
+  const existing = await fs.readdir(BACKUPS).catch(() => []);
+  return {
+    ...info,
+    backups: existing.filter(name => name.toLowerCase().endsWith(".zip"))
+  };
 }
 
 async function log(message) {
-  await fs.appendFile(path.join(LOGS, "mcp-clean.log"), `${new Date().toISOString()} ${message}\n`, "utf8");
+  await fs.appendFile(
+    path.join(LOGS, "mcp-clean.log"),
+    `${new Date().toISOString()} ${message}\n`,
+    "utf8"
+  );
+}
+
+async function restoreCommit(projectPath, commit, dryRun = false) {
+  const before = await gitStatus(projectPath);
+  const checkpoint = await archiveProject(projectPath);
+  if (dryRun) {
+    return { dryRun: true, before, checkpoint, commit };
+  }
+  await runGit(projectPath, ["reset", "--hard", commit]);
+  return { dryRun: false, before, checkpoint, commit, after: await gitStatus(projectPath) };
 }
 
 await bootstrap();
 
 const config = await loadConfig();
 const isAllowed = makeRootMatcher(config.readWrite);
+const allowedProjects = config.readWrite
+  .map(normalizePath)
+  .filter(root => PROJECT_NAMES.includes(path.basename(root)));
 
 const server = new Server(
   {
     name: "mcp-clean",
-    version: "1.2.0"
+    version: "1.3.0"
   },
   {
     capabilities: {
@@ -268,11 +312,7 @@ const server = new Server(
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
-    {
-      name: "ping",
-      description: "Проверка MCP",
-      inputSchema: { type: "object", properties: {} }
-    },
+    { name: "ping", description: "Проверка MCP", inputSchema: { type: "object", properties: {} } },
     {
       name: "list_directory",
       description: "Список файлов в разрешенной папке",
@@ -308,9 +348,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: "Состояние git-проекта из разрешенных корней",
       inputSchema: {
         type: "object",
-        properties: {
-          path: { type: "string" }
-        },
+        properties: { path: { type: "string" } },
         required: ["path"]
       }
     },
@@ -329,9 +367,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "health_check",
       description: "Проверка готовности MCP-CLEAN",
+      inputSchema: { type: "object", properties: {} }
+    },
+    {
+      name: "git_status_all",
+      description: "Статус git для всех проектов из allowed roots",
+      inputSchema: { type: "object", properties: {} }
+    },
+    {
+      name: "git_checkpoint",
+      description: "Создание git checkpoint с commit и push",
       inputSchema: {
         type: "object",
-        properties: {}
+        properties: {
+          message: { type: "string" },
+          dryRun: { type: "boolean", default: false }
+        },
+        required: ["message"]
+      }
+    },
+    {
+      name: "restore_project",
+      description: "Откат проекта к выбранному commit",
+      inputSchema: {
+        type: "object",
+        properties: {
+          path: { type: "string" },
+          commit: { type: "string" },
+          dryRun: { type: "boolean", default: false }
+        },
+        required: ["path"]
       }
     }
   ]
@@ -349,14 +414,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     if (name === "list_directory") {
       const directory = assertAllowed(args.path, isAllowed);
       const files = await fs.readdir(directory, { withFileTypes: true });
-      return {
-        content: [
-          {
-            type: "text",
-            text: files.map(file => `${file.isDirectory() ? "[DIR]" : "[FILE]"} ${file.name}`).join("\n")
-          }
-        ]
-      };
+      return { content: [{ type: "text", text: files.map(file => `${file.isDirectory() ? "[DIR]" : "[FILE]"} ${file.name}`).join("\n") }] };
     }
 
     if (name === "read_file") {
@@ -370,10 +428,10 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       try {
         const oldContent = await fs.readFile(filePath, "utf8");
         await fs.writeFile(path.join(BACKUPS, backupName(filePath)), oldContent, "utf8");
+        const backups = await fs.readdir(BACKUPS).catch(() => []);
+        await log(`FILE_BACKUP ${filePath} ${backups.length}`);
       } catch (error) {
-        if (error?.code !== "ENOENT") {
-          throw error;
-        }
+        if (error?.code !== "ENOENT") throw error;
       }
       await fs.writeFile(filePath, args.content, "utf8");
       await log(`WRITE ${filePath}`);
@@ -382,15 +440,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
     if (name === "project_status") {
       const projectPath = assertAllowed(args.path, isAllowed);
-      const status = await gitStatus(projectPath);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(status, null, 2)
-          }
-        ]
-      };
+      return { content: [{ type: "text", text: JSON.stringify(await gitStatus(projectPath), null, 2) }] };
     }
 
     if (name === "backup_project") {
@@ -399,10 +449,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       if (!exists) {
         throw createError("NOT_FOUND", "Project path does not exist or is not a directory", { path: projectPath });
       }
-
-      const dryRun = Boolean(args.dryRun);
-      const archivePath = path.join(BACKUPS, archiveName(projectPath));
-      if (dryRun) {
+      if (args.dryRun) {
+        const archivePath = path.join(BACKUPS, archiveName(projectPath));
         return {
           content: [
             {
@@ -411,7 +459,11 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
                 {
                   dryRun: true,
                   projectPath,
-                  archivePath
+                  archivePath,
+                  projectInfo: {
+                    name: path.basename(projectPath),
+                    sizeBytes: null
+                  }
                 },
                 null,
                 2
@@ -420,9 +472,9 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
           ]
         };
       }
-
-      const result = await archiveProject(projectPath);
-      await log(`BACKUP ${projectPath} -> ${result.archive}`);
+      const info = await backupProjectInfo(projectPath);
+      const existing = await fs.readdir(BACKUPS).catch(() => []);
+      await log(`BACKUP ${projectPath} -> ${info.archivePath}`);
       return {
         content: [
           {
@@ -431,7 +483,12 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
               {
                 dryRun: false,
                 projectPath,
-                archivePath: result.archive
+                archivePath: info.archivePath,
+                sizeBytes: info.sizeBytes,
+                backups: existing.filter(name => name.toLowerCase().endsWith(".zip")),
+                projectInfo: {
+                  name: path.basename(projectPath)
+                }
               },
               null,
               2
@@ -448,7 +505,9 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         backups: false,
         exchange: false,
         serverMjs: false,
-        tools: false
+        gitAvailable: false,
+        remoteAvailable: false,
+        toolsAvailable: false
       };
 
       checks.allowedRootsConfig = await fs.stat(CONFIG).then(s => s.isFile()).catch(() => false);
@@ -456,7 +515,9 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       checks.backups = await fs.stat(BACKUPS).then(s => s.isDirectory()).catch(() => false);
       checks.exchange = await fs.stat(EXCHANGE).then(s => s.isDirectory()).catch(() => false);
       checks.serverMjs = await fs.stat(path.join(ROOT, "server.mjs")).then(s => s.isFile()).catch(() => false);
-      checks.tools = ["ping", "list_directory", "read_file", "write_file", "project_status", "backup_project", "health_check"].length > 0;
+      checks.gitAvailable = await gitAvailable();
+      checks.remoteAvailable = (await gitStatus(ROOT)).hasRemote;
+      checks.toolsAvailable = true;
 
       return {
         content: [
@@ -464,7 +525,14 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
             type: "text",
             text: JSON.stringify(
               {
-                ok: Object.values(checks).every(Boolean),
+                ok:
+                  checks.allowedRootsConfig &&
+                  checks.logs &&
+                  checks.backups &&
+                  checks.exchange &&
+                  checks.serverMjs &&
+                  checks.gitAvailable &&
+                  checks.toolsAvailable,
                 checks
               },
               null,
@@ -473,6 +541,58 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
           }
         ]
       };
+    }
+
+    if (name === "git_status_all") {
+      const projects = allowedProjects;
+      const results = [];
+      for (const projectPath of projects) {
+        results.push(await gitStatus(projectPath));
+      }
+      return { content: [{ type: "text", text: JSON.stringify({ projects: results }, null, 2) }] };
+    }
+
+    if (name === "git_checkpoint") {
+      const message = String(args.message || "").trim();
+      if (!message) throw createError("INVALID_ARGUMENT", "message is required");
+      const dryRun = Boolean(args.dryRun);
+      const statusBefore = await runGit(ROOT, ["status", "--porcelain"]).then(r => r.stdout.trim()).catch(() => "");
+      const result = {
+        dryRun,
+        statusBefore,
+        message,
+        commitHash: null,
+        push: dryRun ? "dry-run" : "not-run"
+      };
+      if (dryRun) {
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      }
+      await runGit(ROOT, ["add", "--", "."]);
+      const commit = await runGit(ROOT, ["commit", "-m", message]);
+      const hash = await runGit(ROOT, ["rev-parse", "--short", "HEAD"]);
+      result.commitHash = hash.stdout.trim();
+      try {
+        await runGit(ROOT, ["push", "origin", "main"]);
+        result.push = "ok";
+      } catch (error) {
+        result.push = `failed: ${error.message}`;
+      }
+      result.statusBefore = statusBefore;
+      await log(`CHECKPOINT ${result.commitHash} ${message}`);
+      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+
+    if (name === "restore_project") {
+      const projectPath = assertAllowed(args.path, isAllowed);
+      const checkpoint = args.commit ? String(args.commit).trim() : "";
+      const checkpoints = await listGitCheckpoints(projectPath);
+      if (!checkpoint) {
+        return { content: [{ type: "text", text: JSON.stringify({ projectPath, checkpoints }, null, 2) }] };
+      }
+      const exists = checkpoints.some(c => c.full.startsWith(checkpoint) || c.short === checkpoint);
+      if (!exists) throw createError("INVALID_ARGUMENT", "Selected commit is not in recent checkpoint list", { checkpoint });
+      const restored = await restoreCommit(projectPath, checkpoint, Boolean(args.dryRun));
+      return { content: [{ type: "text", text: JSON.stringify({ projectPath, checkpoints, restored }, null, 2) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");
