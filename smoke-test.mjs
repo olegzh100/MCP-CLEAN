@@ -95,6 +95,21 @@ async function main() {
       fail("discover_projects dryRun returned unexpected result");
     }
 
+    const githubStatus = await callJson(client, "github_status", { path: root });
+    if (githubStatus.path !== root || typeof githubStatus.available !== "boolean") {
+      fail("github_status returned unexpected result");
+    }
+
+    const syncPreview = await callJson(client, "sync_projects", { dryRun: true });
+    if (syncPreview.dryRun !== true || !Array.isArray(syncPreview.projects)) {
+      fail("sync_projects dryRun returned unexpected result");
+    }
+
+    const recovery = await callJson(client, "recovery_check", {});
+    if (!Array.isArray(recovery.checks) || typeof recovery.ok !== "boolean") {
+      fail("recovery_check returned unexpected result");
+    }
+
     const registerPreview = await callJson(client, "register_project", {
       name: tempProjectName,
       path: tempProject,

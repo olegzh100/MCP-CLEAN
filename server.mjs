@@ -1,4 +1,4 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+﻿import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import fs from "fs/promises";
@@ -98,6 +98,9 @@ async function loadProjectsConfig() {
   const raw = await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n");
   try {
     const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return { projects: parsed };
+    }
     if (!Array.isArray(parsed?.projects)) {
       return { projects: [] };
     }
@@ -318,6 +321,48 @@ async function logProject(action, project, result) {
   await fs.appendFile(PROJECTS_LOG, `${new Date().toISOString()} | ${action} | ${project || ""} | ${result}\n`, "utf8");
 }
 
+async function gitRemoteState(projectPath) {
+  const status = await gitStatus(projectPath);
+  const info = {
+    remote: "",
+    remoteAvailable: false,
+    remoteCommit: null,
+    localCommit: status.lastCommit,
+    branch: status.branch,
+    divergence: "unknown",
+    available: status.isGit
+  };
+
+  if (!status.isGit || !status.hasRemote) {
+    return info;
+  }
+
+  try {
+    const remoteUrl = await runGit(projectPath, ["remote", "get-url", "origin"]);
+    info.remote = remoteUrl.stdout.trim();
+    info.remoteAvailable = true;
+  } catch {
+    info.remoteAvailable = false;
+  }
+
+  try {
+    const branch = status.branch && status.branch !== "(detached)" ? status.branch : "HEAD";
+    const remoteHead = await runGit(projectPath, ["ls-remote", "origin", branch === "HEAD" ? "HEAD" : `refs/heads/${branch}`]);
+    const firstLine = remoteHead.stdout.trim().split("\n").find(Boolean) || "";
+    const [remoteCommit] = firstLine.split(/\s+/);
+    info.remoteCommit = remoteCommit || null;
+    if (info.remoteCommit && info.localCommit) {
+      info.divergence = info.remoteCommit.startsWith(info.localCommit) || info.localCommit.startsWith(info.remoteCommit) ? "synced" : "diverged";
+    } else {
+      info.divergence = "unknown";
+    }
+  } catch {
+    info.remoteAvailable = false;
+  }
+
+  return info;
+}
+
 async function loadProjectsRegistry() {
   const data = await loadProjectsConfig();
   return data.projects || [];
@@ -513,20 +558,90 @@ async function systemStatus(projects) {
 async function currentManagedProjects() {
   const latest = await loadConfig();
   const registry = await readRegistry();
+  const projectsConfig = await loadProjectsRegistry();
+  const configMap = new Map(projectsConfig.map(item => [item.name, item]));
   const roots = latest.readWrite.map(normalizePath);
   const projects = [];
   for (const root of roots) {
     const name = path.basename(root);
     if (MANAGED_PROJECTS.includes(name) || registry[name]) {
-      projects.push({ name, path: root });
+      projects.push({ name, path: root, ...configMap.get(name) });
     }
   }
   for (const [name, entry] of Object.entries(registry)) {
     if (!projects.some(project => project.name === name)) {
-      projects.push({ name, path: normalizePath(entry.path) });
+      projects.push({ name, path: normalizePath(entry.path), ...configMap.get(name) });
     }
   }
   return projects;
+}
+
+async function syncProjects(dryRun = false) {
+  const projects = [];
+  const registry = await readRegistry();
+  for (const project of await currentManagedProjects()) {
+    const projectPath = normalizePath(project.path);
+    const exists = await fs.stat(projectPath).then(s => s.isDirectory()).catch(() => false);
+    const git = exists ? await gitStatus(projectPath) : { isGit: false, branch: null, lastCommit: null, dirty: null, hasRemote: false, originConnected: false, status: "missing" };
+    const remote = exists ? await gitRemoteState(projectPath) : { remote: "", remoteAvailable: false, remoteCommit: null, divergence: "unknown", available: false };
+    projects.push({
+      name: project.name || path.basename(projectPath),
+      path: projectPath,
+      type: project.type || (git.isGit ? "git" : "folder"),
+      remote: remote.remote || project.remote || "",
+      branch: git.branch,
+      lastCommit: git.lastCommit,
+      localCommit: git.lastCommit,
+      remoteCommit: remote.remoteCommit,
+      divergence: remote.divergence,
+      available: remote.available,
+      remoteAvailable: remote.remoteAvailable,
+      exists,
+      clean: git.status === "clean",
+      dirty: git.dirty,
+      registeredAt: project.registeredAt || new Date().toISOString(),
+      lastCheckpoint: project.lastCheckpoint || "",
+      github: {
+        remote: remote.remote,
+        available: remote.remoteAvailable,
+        lastCommit: remote.remoteCommit,
+        divergence: remote.divergence
+      }
+    });
+  }
+
+  const payload = { dryRun, projects, count: projects.length };
+  if (!dryRun) {
+    await saveProjectsConfig({ projects });
+    const mirror = Object.fromEntries(projects.map(project => [project.name, { path: project.path, branch: project.branch, lastCommit: project.lastCommit, remote: project.remote, divergence: project.divergence, remoteAvailable: project.remoteAvailable }]));
+    await writeRegistry(mirror);
+    await logProject("sync", "projects", `${projects.length}`);
+  }
+  return payload;
+}
+
+async function recoveryCheck() {
+  const config = await loadProjectsConfig();
+  const projects = Array.isArray(config.projects) ? config.projects : [];
+  const checks = [];
+  for (const project of projects) {
+    const exists = await fs.stat(project.path).then(s => s.isDirectory()).catch(() => false);
+    const status = exists ? await gitStatus(project.path) : { isGit: false, branch: null, lastCommit: null, dirty: null, hasRemote: false, originConnected: false, status: "missing" };
+    const remote = exists ? await gitRemoteState(project.path) : { remote: "", remoteAvailable: false, remoteCommit: null, divergence: "unknown", available: false };
+    checks.push({
+      name: project.name,
+      path: project.path,
+      exists,
+      branch: status.branch,
+      localCommit: status.lastCommit,
+      remote: remote.remote,
+      remoteCommit: remote.remoteCommit,
+      divergence: remote.divergence,
+      repositoryAvailable: remote.available && remote.remoteAvailable,
+      recoverable: exists && status.isGit && (remote.divergence === "synced" || remote.divergence === "unknown")
+    });
+  }
+  return { ok: checks.every(item => item.recoverable || !item.exists), checks };
 }
 
 async function projectScan(projectPath, dryRun = false) {
@@ -670,43 +785,46 @@ const server = new Server({ name: "mcp-clean", version: "1.4.0" }, { capabilitie
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
-    { name: "ping", description: "Проверка MCP", inputSchema: { type: "object", properties: {} } },
+    { name: "ping", description: "РџСЂРѕРІРµСЂРєР° MCP", inputSchema: { type: "object", properties: {} } },
     {
       name: "list_directory",
-      description: "Список файлов в разрешенной папке",
+      description: "РЎРїРёСЃРѕРє С„Р°Р№Р»РѕРІ РІ СЂР°Р·СЂРµС€РµРЅРЅРѕР№ РїР°РїРєРµ",
       inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }
     },
     {
       name: "read_file",
-      description: "Чтение файла",
+      description: "Р§С‚РµРЅРёРµ С„Р°Р№Р»Р°",
       inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }
     },
     {
       name: "write_file",
-      description: "Запись файла с резервной копией",
+      description: "Р—Р°РїРёСЃСЊ С„Р°Р№Р»Р° СЃ СЂРµР·РµСЂРІРЅРѕР№ РєРѕРїРёРµР№",
       inputSchema: { type: "object", properties: { path: { type: "string" }, content: { type: "string" } }, required: ["path", "content"] }
     },
     {
       name: "project_status",
-      description: "Состояние git-проекта из разрешенных корней",
+      description: "РЎРѕСЃС‚РѕСЏРЅРёРµ git-РїСЂРѕРµРєС‚Р° РёР· СЂР°Р·СЂРµС€РµРЅРЅС‹С… РєРѕСЂРЅРµР№",
       inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] }
     },
     {
       name: "backup_project",
-      description: "Создание zip-архива проекта в backups",
+      description: "РЎРѕР·РґР°РЅРёРµ zip-Р°СЂС…РёРІР° РїСЂРѕРµРєС‚Р° РІ backups",
       inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] }
     },
-    { name: "health_check", description: "Проверка готовности MCP-CLEAN", inputSchema: { type: "object", properties: {} } },
-    { name: "git_status_all", description: "Статус git для всех проектов из allowed roots", inputSchema: { type: "object", properties: {} } },
-    { name: "git_checkpoint", description: "Создание git checkpoint с commit и push", inputSchema: { type: "object", properties: { message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["message"] } },
-    { name: "restore_project", description: "Откат проекта к выбранному commit", inputSchema: { type: "object", properties: { path: { type: "string" }, commit: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
-    { name: "system_status", description: "Одна команда для проверки всей системы проектов", inputSchema: { type: "object", properties: {} } },
-    { name: "project_scan", description: "Глубокая проверка структуры проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
-    { name: "safe_change", description: "Подготовка перед изменением проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path", "message"] } },
-    { name: "register_project", description: "Безопасное добавление нового проекта в систему MCP-CLEAN", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } },
-    { name: "unregister_project", description: "Удаление проекта из контроля MCP без удаления файлов", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } }
-    ,{ name: "project_manager", description: "Автоматический менеджер проектов", inputSchema: { type: "object", properties: { command: { type: "string" }, name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["command"] } }
-    ,{ name: "discover_projects", description: "Автоматическое обнаружение новых проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    { name: "health_check", description: "РџСЂРѕРІРµСЂРєР° РіРѕС‚РѕРІРЅРѕСЃС‚Рё MCP-CLEAN", inputSchema: { type: "object", properties: {} } },
+    { name: "git_status_all", description: "РЎС‚Р°С‚СѓСЃ git РґР»СЏ РІСЃРµС… РїСЂРѕРµРєС‚РѕРІ РёР· allowed roots", inputSchema: { type: "object", properties: {} } },
+    { name: "git_checkpoint", description: "РЎРѕР·РґР°РЅРёРµ git checkpoint СЃ commit Рё push", inputSchema: { type: "object", properties: { message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["message"] } },
+    { name: "restore_project", description: "РћС‚РєР°С‚ РїСЂРѕРµРєС‚Р° Рє РІС‹Р±СЂР°РЅРЅРѕРјСѓ commit", inputSchema: { type: "object", properties: { path: { type: "string" }, commit: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
+    { name: "system_status", description: "РћРґРЅР° РєРѕРјР°РЅРґР° РґР»СЏ РїСЂРѕРІРµСЂРєРё РІСЃРµР№ СЃРёСЃС‚РµРјС‹ РїСЂРѕРµРєС‚РѕРІ", inputSchema: { type: "object", properties: {} } },
+    { name: "project_scan", description: "Р“Р»СѓР±РѕРєР°СЏ РїСЂРѕРІРµСЂРєР° СЃС‚СЂСѓРєС‚СѓСЂС‹ РїСЂРѕРµРєС‚Р°", inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } },
+    { name: "safe_change", description: "РџРѕРґРіРѕС‚РѕРІРєР° РїРµСЂРµРґ РёР·РјРµРЅРµРЅРёРµРј РїСЂРѕРµРєС‚Р°", inputSchema: { type: "object", properties: { path: { type: "string" }, message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path", "message"] } },
+    { name: "register_project", description: "Р‘РµР·РѕРїР°СЃРЅРѕРµ РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІРѕРіРѕ РїСЂРѕРµРєС‚Р° РІ СЃРёСЃС‚РµРјСѓ MCP-CLEAN", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } },
+    { name: "unregister_project", description: "РЈРґР°Р»РµРЅРёРµ РїСЂРѕРµРєС‚Р° РёР· РєРѕРЅС‚СЂРѕР»СЏ MCP Р±РµР· СѓРґР°Р»РµРЅРёСЏ С„Р°Р№Р»РѕРІ", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } }
+    ,{ name: "project_manager", description: "РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ РјРµРЅРµРґР¶РµСЂ РїСЂРѕРµРєС‚РѕРІ", inputSchema: { type: "object", properties: { command: { type: "string" }, name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["command"] } }
+    ,{ name: "discover_projects", description: "РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРµ РѕР±РЅР°СЂСѓР¶РµРЅРёРµ РЅРѕРІС‹С… РїСЂРѕРµРєС‚РѕРІ", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "github_status", description: "GitHub-статус проекта: remote, commit, branch, divergence, availability", inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
+    ,{ name: "sync_projects", description: "Синхронизация registry MCP-CLEAN и GitHub-ориентированных метаданных", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "recovery_check", description: "Проверка готовности проектов к восстановлению из registry и GitHub", inputSchema: { type: "object", properties: {} } }
   ]
 }));
 
@@ -843,6 +961,20 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       return { content: [{ type: "text", text: normalizeToolResult(await discoverProjects(Boolean(args.dryRun))) }] };
     }
 
+    if (name === "github_status") {
+      const projectPath = assertAllowed(args.path, isAllowed);
+      const result = await gitRemoteState(projectPath);
+      return { content: [{ type: "text", text: normalizeToolResult({ path: projectPath, ...result }) }] };
+    }
+
+    if (name === "sync_projects") {
+      return { content: [{ type: "text", text: normalizeToolResult(await syncProjects(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "recovery_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await recoveryCheck()) }] };
+    }
+
     throw createError("UNKNOWN_TOOL", "Unknown tool");
   } catch (error) {
     return toErrorResult(error);
@@ -851,3 +983,5 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
 await server.connect(new StdioServerTransport());
 console.error("MCP CLEAN READY");
+
+

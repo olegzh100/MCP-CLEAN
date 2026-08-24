@@ -1,1 +1,90 @@
-{}
+{
+  "MCP-CLEAN": {
+    "path": "F:\\MCP-CLEAN",
+    "branch": "main",
+    "lastCommit": "f28f3f0",
+    "remote": "https://github.com/olegzh100/MCP-CLEAN.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "CRM": {
+    "path": "C:\\Users\\oleg\\codex-test\\CRM",
+    "branch": "fix/education-inbound-leads-ui",
+    "lastCommit": "a43eb00e",
+    "remote": "https://github.com/olegzh100/CRM.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "CRM-Mobile-2": {
+    "path": "C:\\Users\\oleg\\codex-test\\CRM-Mobile-2",
+    "branch": null,
+    "lastCommit": null,
+    "remote": "",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "mba-academy-site": {
+    "path": "C:\\Users\\oleg\\codex-test\\mba-academy-site",
+    "branch": "main",
+    "lastCommit": "a6ae144",
+    "remote": "https://github.com/olegzh100/mba-academy-site.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "MBA-ALBUMS": {
+    "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS",
+    "branch": "preza-full-album-galleries",
+    "lastCommit": "6f8e583",
+    "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "MBA-ALBUMS-PROD": {
+    "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-PROD",
+    "branch": "main",
+    "lastCommit": "fcbf3a5",
+    "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "MBA-ALBUMS-TILDA-OFF-2": {
+    "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-TILDA-OFF-2",
+    "branch": "mobile-site-v2",
+    "lastCommit": "319b796",
+    "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "MBA-ALBUMS-WEB2-CONNECT": {
+    "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-WEB2-CONNECT",
+    "branch": "web2-connect-prep",
+    "lastCommit": "1f69985",
+    "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "Site-universe": {
+    "path": "C:\\Users\\oleg\\codex-test\\Site-universe",
+    "branch": "main",
+    "lastCommit": "0482e42",
+    "remote": "https://github.com/olegzh100/Site-universe.git",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "Site-wedding": {
+    "path": "C:\\Users\\oleg\\codex-test\\Site-wedding",
+    "branch": null,
+    "lastCommit": null,
+    "remote": "",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  },
+  "Content-Automation": {
+    "path": "C:\\Users\\oleg\\codex-test\\Content-Automation",
+    "branch": "main",
+    "lastCommit": "34261b7",
+    "remote": "",
+    "divergence": "unknown",
+    "remoteAvailable": false
+  }
+}

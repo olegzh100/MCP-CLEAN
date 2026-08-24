@@ -7,6 +7,7 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `server.mjs` - MCP server and tool implementations
 - `config/allowed-roots.json` - source of allowed project roots
 - `config/projects.json` - registry of managed projects
+- `config/projects.json` - GitHub-backed project registry state
 - `backups/` - project archives and file backups
 - `logs/` - operational logs
 - `logs/actions.log` - action audit trail
@@ -35,6 +36,9 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `unregister_project`
 - `project_manager`
 - `discover_projects`
+- `github_status`
+- `sync_projects`
+- `recovery_check`
 
 ## Работа с проектами
 
@@ -43,6 +47,17 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `project_scan` выполняет глубокую проверку структуры без изменений.
 - `safe_change` готовит backup и checkpoint перед изменениями.
 - `project_manager` дает единый интерфейс для списка, проверки, backup, checkpoint и health.
+- `github_status` показывает remote, branch, commit и divergence local/GitHub.
+- `sync_projects` синхронизирует MCP registry state с GitHub-backed metadata.
+- `recovery_check` проверяет готовность проекта к восстановлению.
+
+## GitHub Project Registry
+
+- `config/projects.json` хранит текущие GitHub-ориентированные метаданные проектов.
+- Этот слой служит источником состояния, если MCP временно недоступен.
+- `sync_projects` обновляет локальный registry и зеркалирует его в GitHub через обычный commit/push workflow.
+- `github_status` можно использовать для проверки доступности remote и расхождения локального состояния с GitHub.
+- `recovery_check` помогает понять, можно ли безопасно восстановить состояние проекта из текущего registry.
 
 ## Подключение новых проектов
 
