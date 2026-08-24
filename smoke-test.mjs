@@ -7,7 +7,6 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 const root = "F:\\MCP-CLEAN";
 const serverPath = path.join(root, "server.mjs");
 const allowedFile = path.join(root, "package.json");
-const projectPath = root;
 const forbiddenFile = path.join(os.homedir(), "Desktop", "forbidden-mcp-clean-test.txt");
 
 function fail(message) {
@@ -28,10 +27,7 @@ async function main() {
     cwd: root
   });
 
-  const client = new Client({
-    name: "mcp-clean-smoke",
-    version: "1.0.0"
-  });
+  const client = new Client({ name: "mcp-clean-smoke", version: "1.0.0" });
 
   try {
     await client.connect(transport);
@@ -46,18 +42,33 @@ async function main() {
       fail("health_check reported not ok");
     }
 
-    const status = await callJson(client, "project_status", { path: projectPath });
-    if (status.path !== projectPath || status.isGit !== true) {
+    const system = await callJson(client, "system_status", {});
+    if (!Array.isArray(system.projects) || system.projects.length < 7) {
+      fail("system_status returned unexpected result");
+    }
+
+    const scan = await callJson(client, "project_scan", { path: root, dryRun: true });
+    if (scan.path !== root || scan.dryRun !== true) {
+      fail("project_scan dryRun returned unexpected result");
+    }
+
+    const safe = await callJson(client, "safe_change", { path: root, message: "smoke safe change", dryRun: true });
+    if (!safe.dryRun || safe.projectPath !== root) {
+      fail("safe_change dryRun returned unexpected result");
+    }
+
+    const status = await callJson(client, "project_status", { path: root });
+    if (status.path !== root || status.isGit !== true) {
       fail("project_status returned unexpected result");
     }
 
     const all = await callJson(client, "git_status_all", {});
-    if (!Array.isArray(all.projects) || all.projects.length < 2) {
+    if (!Array.isArray(all.projects) || all.projects.length < 7) {
       fail("git_status_all returned unexpected result");
     }
 
-    const backupPreview = await callJson(client, "backup_project", { path: projectPath, dryRun: true });
-    if (!backupPreview.dryRun || backupPreview.projectPath !== projectPath) {
+    const backupPreview = await callJson(client, "backup_project", { path: root, dryRun: true });
+    if (!backupPreview.dryRun || backupPreview.projectPath !== root) {
       fail("backup_project dryRun returned unexpected result");
     }
 

@@ -2,17 +2,18 @@
 
 MCP-CLEAN is a local control center for approved project folders on this machine.
 
-## Structure
+## Архитектура MCP-CLEAN
 
 - `server.mjs` - MCP server and tool implementations
 - `config/allowed-roots.json` - allowed project roots
-- `backups/` - local archives and file backups
-- `logs/` - operational log files
+- `backups/` - project archives and file backups
+- `logs/` - operational logs
+- `logs/actions.log` - action audit trail
 - `temp/` - temporary runtime files
 - `exchange/` - exchange metadata and project notes
 - `smoke-test.mjs` - local smoke test
 
-## MCP Tools
+## Все доступные инструменты
 
 - `ping`
 - `list_directory`
@@ -24,36 +25,44 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `git_status_all`
 - `git_checkpoint`
 - `restore_project`
+- `system_status`
+- `project_scan`
+- `safe_change`
 
-## Access Rules
+## Работа с проектами
 
-- Only paths under `config/allowed-roots.json` are allowed.
-- Working projects are not modified by status checks.
-- `backup_project` stores archives only in `backups/`.
-- `git_checkpoint` and `restore_project` operate only on `F:\MCP-CLEAN`.
-- `restore_project` creates a backup before rollback.
+- Все операции ограничены путями из `config/allowed-roots.json`.
+- `system_status` и `git_status_all` работают только по разрешенным проектам.
+- `project_scan` выполняет глубокую проверку структуры без изменения файлов.
+- `safe_change` подготавливает проект через backup и checkpoint.
 
-## Checkpoints
+## Backup
 
-- `git_checkpoint` stages all changes, creates a commit, and pushes `origin main`.
-- Use `dryRun: true` to preview the operation without changing state.
+- Все архивы и file-backups сохраняются только в `F:\MCP-CLEAN\backups`.
+- Имена архивов содержат timestamp.
+- Результаты backup включают путь, размер, информацию о проекте и список архивов.
+
+## Git checkpoint
+
+- `git_checkpoint` делает stage, commit и push в `origin main`.
+- Поддерживается `dryRun` для безопасной проверки без изменений.
 
 ## Rollback
 
-- `restore_project` lists recent checkpoint commits when `commit` is omitted.
-- Provide a commit hash to restore that checkpoint.
-- The tool creates a backup archive first, then resets the project to the selected commit.
+- `restore_project` показывает доступные checkpoint commit'ы, если commit не указан.
+- Перед откатом создается backup.
+- Затем выполняется `git reset --hard` на выбранный commit.
 
-## Backups
+## Логи
 
-- Project archives and file backups are stored in `F:\MCP-CLEAN\backups`.
-- Archive names include timestamps to avoid collisions.
-- Backup results include project info, archive size, and the current list of backup archives.
+- `logs/mcp-clean.log` - операционные записи.
+- `logs/actions.log` - журнал действий с датой, инструментом, проектом, действием и результатом.
 
-## Scheme
+## Схема работы
 
-1. Read health with `health_check`.
-2. Inspect projects with `project_status` or `git_status_all`.
-3. Create a checkpoint with `git_checkpoint`.
-4. Roll back with `restore_project` when needed.
-5. Verify with `smoke-test.mjs` before committing.
+1. Проверить здоровье через `health_check`.
+2. Посмотреть систему через `system_status`.
+3. Проанализировать проект через `project_scan`.
+4. Подготовить изменение через `safe_change`.
+5. При необходимости создать checkpoint через `git_checkpoint`.
+6. При необходимости откатить проект через `restore_project`.
