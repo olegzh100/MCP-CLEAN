@@ -1,0 +1,80 @@
+{
+  "name": "mcp-clean-exchange",
+  "root": "F:\\MCP-CLEAN\\exchange",
+  "purpose": "служебный обмен между разрешёнными проектами",
+  "folders": [
+    "incoming",
+    "outgoing",
+    "artifacts",
+    "temp",
+    "projects"
+  ],
+  "projects": [
+    {
+      "name": "CRM",
+      "path": "C:\\Users\\oleg\\codex-test\\CRM",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "CRM-Mobile-2",
+      "path": "C:\\Users\\oleg\\codex-test\\CRM-Mobile-2",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "mba-academy-site",
+      "path": "C:\\Users\\oleg\\codex-test\\mba-academy-site",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "MBA-ALBUMS",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "MBA-ALBUMS-PROD",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-PROD",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "MBA-ALBUMS-TILDA-OFF-2",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-TILDA-OFF-2",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "MBA-ALBUMS-WEB2-CONNECT",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-WEB2-CONNECT",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "Site-universe",
+      "path": "C:\\Users\\oleg\\codex-test\\Site-universe",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "Site-wedding",
+      "path": "C:\\Users\\oleg\\codex-test\\Site-wedding",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "Content-Automation",
+      "path": "C:\\Users\\oleg\\codex-test\\Content-Automation",
+      "status": "access verified",
+      "code_modified": false
+    },
+    {
+      "name": "Downloads",
+      "path": "C:\\Users\\oleg\\Downloads",
+      "status": "access verified",
+      "code_modified": false
+    }
+  ]
+}
