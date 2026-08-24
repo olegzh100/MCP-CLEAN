@@ -125,6 +125,26 @@ async function main() {
       fail("github_checkpoint_all dryRun returned unexpected result");
     }
 
+    const browserStatus = await callJson(client, "browser_status", { dryRun: true });
+    if (!browserStatus.dryRun || typeof browserStatus.running !== "boolean" || typeof browserStatus.manageable !== "boolean") {
+      fail("browser_status dryRun returned unexpected result");
+    }
+
+    const browserConfig = JSON.parse(await fs.readFile(path.join(root, "config", "browser.json"), "utf8"));
+    if (!Array.isArray(browserConfig.allowedSites) || browserConfig.allowedSites.length < 5) {
+      fail("browser.json could not be read");
+    }
+
+    const browserCheckpoint = await callJson(client, "browser_checkpoint", {});
+    if (!browserCheckpoint.lastSavedAt || !Array.isArray(browserCheckpoint.tabs)) {
+      fail("browser_checkpoint returned unexpected result");
+    }
+
+    const browserState = JSON.parse(await fs.readFile(path.join(root, "config", "browser-state.json"), "utf8"));
+    if (!Array.isArray(browserState.tabs)) {
+      fail("browser-state.json could not be read");
+    }
+
     const syncState = await callJson(client, "sync_project_state", { path: root, dryRun: true });
     if (syncState.path !== root || !syncState.local || !syncState.remote || !syncState.difference) {
       fail("sync_project_state dryRun returned unexpected result");

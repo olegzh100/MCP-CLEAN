@@ -17,9 +17,12 @@ const EXCHANGE_REGISTRY = path.join(EXCHANGE, "registry.json");
 const PROJECTS_CONFIG = path.join(ROOT, "config", "projects.json");
 const GITHUB_REGISTRY = path.join(ROOT, "config", "github-registry.json");
 const RECOVERY_CONFIG = path.join(ROOT, "config", "recovery.json");
+const BROWSER_CONFIG = path.join(ROOT, "config", "browser.json");
+const BROWSER_STATE = path.join(ROOT, "config", "browser-state.json");
 const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
 const PROJECTS_LOG = path.join(LOGS, "projects.log");
 const RECOVERY_LOG = path.join(LOGS, "recovery.log");
+const BROWSER_LOG = path.join(LOGS, "browser.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -46,9 +49,12 @@ async function bootstrap() {
   await fs.appendFile(ACTIONS_LOG, "", "utf8");
   await fs.appendFile(PROJECTS_LOG, "", "utf8");
   await fs.appendFile(RECOVERY_LOG, "", "utf8");
+  await fs.appendFile(BROWSER_LOG, "", "utf8");
   await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(GITHUB_REGISTRY, await fs.readFile(GITHUB_REGISTRY, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
+  await fs.writeFile(BROWSER_CONFIG, await fs.readFile(BROWSER_CONFIG, "utf8").catch(() => "{\"browser\":\"Edge\",\"profile\":\"Default\",\"allowedSites\":[\"eLama\",\"Яндекс Директ\",\"CRM\",\"GitHub\",\"Firebase\"]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(BROWSER_STATE, await fs.readFile(BROWSER_STATE, "utf8").catch(() => "{\"lastSavedAt\":\"\",\"profile\":\"Default\",\"tabs\":[]}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -172,6 +178,118 @@ async function loadRecoveryConfig() {
 
 async function saveRecoveryConfig(data) {
   await fs.writeFile(RECOVERY_CONFIG, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+async function loadBrowserConfig() {
+  const raw = await fs.readFile(BROWSER_CONFIG, "utf8").catch(() => "{\"browser\":\"Edge\",\"profile\":\"Default\",\"allowedSites\":[\"eLama\",\"Яндекс Директ\",\"CRM\",\"GitHub\",\"Firebase\"]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.allowedSites)) parsed.allowedSites = [];
+    return parsed;
+  } catch {
+    return { browser: "Edge", profile: "Default", allowedSites: ["eLama", "Яндекс Директ", "CRM", "GitHub", "Firebase"] };
+  }
+}
+
+async function saveBrowserState(data) {
+  await fs.writeFile(BROWSER_STATE, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+async function loadBrowserState() {
+  const raw = await fs.readFile(BROWSER_STATE, "utf8").catch(() => "{\"lastSavedAt\":\"\",\"profile\":\"Default\",\"tabs\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.tabs)) parsed.tabs = [];
+    return parsed;
+  } catch {
+    return { lastSavedAt: "", profile: "Default", tabs: [] };
+  }
+}
+
+async function browserProcessRunning() {
+  try {
+    const result = await runCommand("powershell.exe", ["-NoProfile", "-Command", "Get-Process msedge -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object { 'running' }"], ROOT);
+    return result.stdout.trim() === "running";
+  } catch {
+    return false;
+  }
+}
+
+async function browserStatusInfo() {
+  const config = await loadBrowserConfig();
+  const state = await loadBrowserState();
+  const running = await browserProcessRunning();
+  return {
+    browser: config.browser || "Edge",
+    profile: config.profile || "Default",
+    running,
+    manageable: running,
+    tabs: state.tabs.length,
+    allowedSites: config.allowedSites || []
+  };
+}
+
+async function browserTabsInfo() {
+  const state = await loadBrowserState();
+  return {
+    profile: state.profile || "Default",
+    tabs: (state.tabs || []).map(tab => ({
+      title: tab.title || "",
+      url: tab.url || "",
+      profile: state.profile || "Default",
+      state: tab.state || "unknown"
+    }))
+  };
+}
+
+function browserSiteAllowed(url, allowedSites) {
+  const target = String(url || "").toLowerCase();
+  return allowedSites.some(site => target.includes(String(site).toLowerCase()));
+}
+
+async function browserOpenUrl(url, useNewTab = true) {
+  const config = await loadBrowserConfig();
+  if (!browserSiteAllowed(url, config.allowedSites || [])) {
+    throw createError("ACCESS_DENIED", "URL is not in allowed browser sites list", { url });
+  }
+  const edge = "msedge.exe";
+  const args = ["--profile-directory=Default", url];
+  if (useNewTab) args.unshift("--new-tab");
+  await runCommand("powershell.exe", ["-NoProfile", "-Command", `Start-Process -FilePath '${edge}' -ArgumentList ${JSON.stringify(args.map(String))}`], ROOT);
+  const state = await loadBrowserState();
+  const tabs = Array.isArray(state.tabs) ? [...state.tabs] : [];
+  tabs.push({ title: url, url, state: "opened" });
+  const next = { lastSavedAt: state.lastSavedAt || new Date().toISOString(), profile: config.profile || state.profile || "Default", tabs };
+  await saveBrowserState(next);
+  await fs.appendFile(BROWSER_LOG, `${new Date().toISOString()} | open | ${url}\n`, "utf8");
+  return { opened: true, url, newTab: useNewTab, profile: next.profile };
+}
+
+async function browserCheckpoint() {
+  const config = await loadBrowserConfig();
+  const state = await loadBrowserState();
+  const payload = {
+    lastSavedAt: new Date().toISOString(),
+    profile: config.profile || state.profile || "Default",
+    tabs: state.tabs || []
+  };
+  await saveBrowserState(payload);
+  await fs.appendFile(BROWSER_LOG, `${payload.lastSavedAt} | checkpoint | ${payload.tabs.length}\n`, "utf8");
+  return payload;
+}
+
+async function browserRestore() {
+  const state = await loadBrowserState();
+  const config = await loadBrowserConfig();
+  const restoredTabs = [];
+  for (const tab of state.tabs || []) {
+    if (!tab.url) continue;
+    if (!browserSiteAllowed(tab.url, config.allowedSites || [])) continue;
+    await browserOpenUrl(tab.url, true);
+    restoredTabs.push(tab.url);
+  }
+  await fs.appendFile(BROWSER_LOG, `${new Date().toISOString()} | restore | ${restoredTabs.length}\n`, "utf8");
+  return { restored: restoredTabs.length, profile: state.profile || config.profile || "Default", tabs: restoredTabs };
 }
 
 let allowedRootsState = [];
@@ -1042,7 +1160,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ,{ name: "recovery_check", description: "Проверка готовности проектов к восстановлению из registry и GitHub", inputSchema: { type: "object", properties: {} } }
     ,{ name: "github_status_all", description: "Единый статус всех GitHub-проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "github_checkpoint_all", description: "Массовая точка сохранения всех проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
-    ,{ name: "github_sync_check", description: "Проверка расхождений local/remote без merge", inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
+    ,{ name: "github_sync_check", description: "Проверка расхождений local/remote без merge", inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } }
+    ,{ name: "browser_status", description: "Статус Edge браузера и управляемого профиля", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "browser_tabs", description: "Список сохранённых вкладок браузера", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "browser_open", description: "Открытие URL в существующем Edge", inputSchema: { type: "object", properties: { url: { type: "string" }, newTab: { type: "boolean", default: true } }, required: ["url"] } }
+    ,{ name: "browser_checkpoint", description: "Сохранение состояния браузера", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "browser_restore", description: "Восстановление сохранённого состояния браузера", inputSchema: { type: "object", properties: {} } }
   ]
 }));
 
@@ -1210,6 +1333,28 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     if (name === "github_sync_check") {
       const projectPath = assertAllowed(args.path, isAllowed);
       return { content: [{ type: "text", text: normalizeToolResult(await githubSyncCheck(projectPath, Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "browser_status") {
+      return { content: [{ type: "text", text: normalizeToolResult({ dryRun: Boolean(args.dryRun), ...(await browserStatusInfo()) }) }] };
+    }
+
+    if (name === "browser_tabs") {
+      return { content: [{ type: "text", text: normalizeToolResult(await browserTabsInfo()) }] };
+    }
+
+    if (name === "browser_open") {
+      const url = String(args.url || "").trim();
+      if (!url) throw createError("INVALID_ARGUMENT", "url is required");
+      return { content: [{ type: "text", text: normalizeToolResult(await browserOpenUrl(url, Boolean(args.newTab))) }] };
+    }
+
+    if (name === "browser_checkpoint") {
+      return { content: [{ type: "text", text: normalizeToolResult(await browserCheckpoint()) }] };
+    }
+
+    if (name === "browser_restore") {
+      return { content: [{ type: "text", text: normalizeToolResult(await browserRestore()) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");

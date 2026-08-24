@@ -73,6 +73,14 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `config/github-registry.json` хранит GitHub registry snapshot и служит рабочим слоем для manager-операций.
 - Восстановление и продолжение работы выполняются через проверку статуса, checkpoint и последующий push.
 
+## Browser Automation
+
+- MCP-CLEAN подключается к существующему рабочему Edge-профилю, а не поднимает отдельный технический браузер.
+- `browser_status` показывает состояние Edge и управляемого профиля.
+- `browser_checkpoint` сохраняет список вкладок и профиль в `config/browser-state.json`.
+- `browser_restore` восстанавливает сохранённые вкладки из `config/browser-state.json`.
+- Безопасность ограничивает работу разрешёнными сайтами и запрещает удаление профилей, очистку cookies, выход из аккаунтов и изменение паролей.
+
 ## Восстановление после сбоя MCP
 
 1. Если MCP недоступен, откройте `config/recovery.json` как последний локальный снимок состояния.
