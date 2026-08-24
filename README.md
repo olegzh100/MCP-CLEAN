@@ -152,3 +152,18 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 5. При необходимости зарегистрировать проект через `register_project`.
 6. Создать checkpoint через `git_checkpoint`.
 7. Вернуть проект через `restore_project`, если нужен rollback.
+## Advertising Automation
+
+- `elama_status` показывает доступность кабинета, состояние Edge и сохранённый state eLama.
+- `elama_open` открывает eLama в существующем Edge-профиле.
+- `elama_campaigns_check` читает кампании eLama без изменений.
+- `elama_checkpoint` сохраняет state eLama в `config/elama-state.json`.
+- `elama_prepare_change` подготавливает изменения без автоматического применения.
+- `direct_status` показывает доступность Яндекс Директ, состояние Edge и сохранённый state.
+- `direct_open` открывает Директ в существующем Edge-профиле.
+- `direct_campaign_check` читает кампании Директа без изменений.
+- `direct_checkpoint` сохраняет state Директа в `config/direct-state.json`.
+- `direct_prepare_change` подготавливает изменения без автоматического применения.
+- `advertising_status` собирает единый статус eLama и Яндекс Директ.
+- `config/elama.json` и `config/direct.json` хранят URL, аккаунт и разрешённые действия.
+- Безопасные изменения выполняются через checkpoint и сохранение state в `config/*.json`.

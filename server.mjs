@@ -21,12 +21,18 @@ const BROWSER_CONFIG = path.join(ROOT, "config", "browser.json");
 const BROWSER_STATE = path.join(ROOT, "config", "browser-state.json");
 const CRM_CONFIG = path.join(ROOT, "config", "crm.json");
 const DEPLOY_CONFIG = path.join(ROOT, "config", "deploy.json");
+const ELAMA_CONFIG = path.join(ROOT, "config", "elama.json");
+const ELAMA_STATE = path.join(ROOT, "config", "elama-state.json");
+const DIRECT_CONFIG = path.join(ROOT, "config", "direct.json");
+const DIRECT_STATE = path.join(ROOT, "config", "direct-state.json");
 const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
 const PROJECTS_LOG = path.join(LOGS, "projects.log");
 const RECOVERY_LOG = path.join(LOGS, "recovery.log");
 const BROWSER_LOG = path.join(LOGS, "browser.log");
 const CRM_LOG = path.join(LOGS, "crm.log");
 const DEPLOY_LOG = path.join(LOGS, "deploy.log");
+const ELAMA_LOG = path.join(LOGS, "elama.log");
+const DIRECT_LOG = path.join(LOGS, "direct.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -57,10 +63,14 @@ async function bootstrap() {
   await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(GITHUB_REGISTRY, await fs.readFile(GITHUB_REGISTRY, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
-  await fs.writeFile(BROWSER_CONFIG, await fs.readFile(BROWSER_CONFIG, "utf8").catch(() => "{\"browser\":\"Edge\",\"profile\":\"Default\",\"allowedSites\":[\"eLama\",\"Яндекс Директ\",\"CRM\",\"GitHub\",\"Firebase\"]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(BROWSER_CONFIG, await fs.readFile(BROWSER_CONFIG, "utf8").catch(() => "{\"browser\":\"Edge\",\"profile\":\"Default\",\"allowedSites\":[\"eLama\",\"Яндекс Директ\",\"https://elama.ru\",\"https://direct.yandex.ru\",\"CRM\",\"GitHub\",\"Firebase\"]}\n"), "utf8").catch(() => {});
   await fs.writeFile(BROWSER_STATE, await fs.readFile(BROWSER_STATE, "utf8").catch(() => "{\"lastSavedAt\":\"\",\"profile\":\"Default\",\"tabs\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(CRM_CONFIG, await fs.readFile(CRM_CONFIG, "utf8").catch(() => "{\"projectPath\":\"C:\\\\Users\\\\oleg\\\\codex-test\\\\CRM\",\"apiUrl\":\"\",\"healthUrl\":\"\",\"githubRemote\":\"https://github.com/olegzh100/CRM.git\"}\n"), "utf8").catch(() => {});
   await fs.writeFile(DEPLOY_CONFIG, await fs.readFile(DEPLOY_CONFIG, "utf8").catch(() => "{\"sites\":[{\"site\":\"https://example.com\",\"server\":\"default\",\"type\":\"static\",\"gitRemote\":\"\"}]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(ELAMA_CONFIG, await fs.readFile(ELAMA_CONFIG, "utf8").catch(() => "{\"url\":\"https://elama.ru\",\"account\":\"\",\"allowedActions\":[\"read\"]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(ELAMA_STATE, await fs.readFile(ELAMA_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(DIRECT_CONFIG, await fs.readFile(DIRECT_CONFIG, "utf8").catch(() => "{\"url\":\"https://direct.yandex.ru\",\"account\":\"\",\"allowedActions\":[\"read\"]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(DIRECT_STATE, await fs.readFile(DIRECT_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -219,6 +229,66 @@ async function loadDeployConfig() {
     return { sites: Array.isArray(parsed?.sites) ? parsed.sites : [] };
   } catch {
     return { sites: [] };
+  }
+}
+
+async function loadElamaConfig() {
+  const raw = await fs.readFile(ELAMA_CONFIG, "utf8").catch(() => "{\"url\":\"\",\"account\":\"\",\"allowedActions\":[\"read\"]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      url: parsed.url || "",
+      account: parsed.account || "",
+      allowedActions: Array.isArray(parsed.allowedActions) ? parsed.allowedActions : ["read"]
+    };
+  } catch {
+    return { url: "", account: "", allowedActions: ["read"] };
+  }
+}
+
+async function saveElamaState(data) {
+  await fs.writeFile(ELAMA_STATE, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+async function loadElamaState() {
+  const raw = await fs.readFile(ELAMA_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.campaigns)) parsed.campaigns = [];
+    if (!Array.isArray(parsed?.changes)) parsed.changes = [];
+    return parsed;
+  } catch {
+    return { checkedAt: "", account: "", campaigns: [], changes: [] };
+  }
+}
+
+async function loadDirectConfig() {
+  const raw = await fs.readFile(DIRECT_CONFIG, "utf8").catch(() => "{\"url\":\"\",\"account\":\"\",\"allowedActions\":[\"read\"]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      url: parsed.url || "",
+      account: parsed.account || "",
+      allowedActions: Array.isArray(parsed.allowedActions) ? parsed.allowedActions : ["read"]
+    };
+  } catch {
+    return { url: "", account: "", allowedActions: ["read"] };
+  }
+}
+
+async function saveDirectState(data) {
+  await fs.writeFile(DIRECT_STATE, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+async function loadDirectState() {
+  const raw = await fs.readFile(DIRECT_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.campaigns)) parsed.campaigns = [];
+    if (!Array.isArray(parsed?.changes)) parsed.changes = [];
+    return parsed;
+  } catch {
+    return { checkedAt: "", account: "", campaigns: [], changes: [] };
   }
 }
 
@@ -421,6 +491,123 @@ async function deployPrepare(dryRun = false) {
 async function deployHistory() {
   const config = await loadDeployConfig();
   return { sites: config.sites.map(site => ({ site: site.site, lastDeploy: site.lastDeploy || "", commit: site.lastCommit || "", result: site.result || "" })) };
+}
+
+async function elamaStatus(dryRun = false) {
+  const config = await loadElamaConfig();
+  const browser = await browserStatusInfo();
+  const state = await loadElamaState();
+  return {
+    dryRun,
+    cabinetAvailable: Boolean(config.url),
+    browser: browser.running ? "OK" : "ERROR",
+    account: config.account || state.account || "",
+    lastCheckedAt: state.checkedAt || "",
+    savedState: state
+  };
+}
+
+async function elamaOpen(dryRun = false) {
+  const config = await loadElamaConfig();
+  if (dryRun) return { dryRun: true, url: config.url || "", opened: Boolean(config.url), profile: (await loadBrowserConfig()).profile || "Default" };
+  if (!config.url) throw createError("INVALID_ARGUMENT", "eLama URL is required");
+  const opened = await browserOpenUrl(config.url, true);
+  await fs.appendFile(ELAMA_LOG, `${new Date().toISOString()} | open | ${config.url}\n`, "utf8");
+  return { dryRun: false, opened: true, ...opened };
+}
+
+async function elamaCampaignsCheck(dryRun = false) {
+  const config = await loadElamaConfig();
+  const state = await loadElamaState();
+  const campaigns = dryRun ? state.campaigns : state.campaigns;
+  return {
+    dryRun,
+    available: Boolean(config.url),
+    campaigns,
+    errors: state.changes || []
+  };
+}
+
+async function elamaCheckpoint(dryRun = false) {
+  const config = await loadElamaConfig();
+  const state = {
+    checkedAt: new Date().toISOString(),
+    account: config.account || "",
+    campaigns: (await loadElamaState()).campaigns || [],
+    changes: (await loadElamaState()).changes || []
+  };
+  if (!dryRun) {
+    await saveElamaState(state);
+    await fs.appendFile(ELAMA_LOG, `${state.checkedAt} | checkpoint | ${state.account}\n`, "utf8");
+  }
+  return { dryRun, ...state };
+}
+
+async function elamaPrepareChange(dryRun = false) {
+  const checkpoint = await elamaCheckpoint(dryRun);
+  const status = await elamaStatus(true);
+  return { dryRun, checkpoint, status, plannedChanges: [] };
+}
+
+async function directStatus(dryRun = false) {
+  const config = await loadDirectConfig();
+  const browser = await browserStatusInfo();
+  const state = await loadDirectState();
+  return {
+    dryRun,
+    cabinetAvailable: Boolean(config.url),
+    browser: browser.running ? "OK" : "ERROR",
+    account: config.account || state.account || "",
+    lastCheckedAt: state.checkedAt || "",
+    savedState: state
+  };
+}
+
+async function directOpen(dryRun = false) {
+  const config = await loadDirectConfig();
+  if (dryRun) return { dryRun: true, url: config.url || "", opened: Boolean(config.url), profile: (await loadBrowserConfig()).profile || "Default" };
+  if (!config.url) throw createError("INVALID_ARGUMENT", "Direct URL is required");
+  const opened = await browserOpenUrl(config.url, true);
+  await fs.appendFile(DIRECT_LOG, `${new Date().toISOString()} | open | ${config.url}\n`, "utf8");
+  return { dryRun: false, opened: true, ...opened };
+}
+
+async function directCampaignCheck(dryRun = false) {
+  const state = await loadDirectState();
+  return {
+    dryRun,
+    campaigns: state.campaigns || [],
+    errors: state.changes || [],
+    available: true
+  };
+}
+
+async function directCheckpoint(dryRun = false) {
+  const config = await loadDirectConfig();
+  const state = {
+    checkedAt: new Date().toISOString(),
+    account: config.account || "",
+    campaigns: (await loadDirectState()).campaigns || [],
+    changes: (await loadDirectState()).changes || []
+  };
+  if (!dryRun) {
+    await saveDirectState(state);
+    await fs.appendFile(DIRECT_LOG, `${state.checkedAt} | checkpoint | ${state.account}\n`, "utf8");
+  }
+  return { dryRun, ...state };
+}
+
+async function directPrepareChange(dryRun = false) {
+  const checkpoint = await directCheckpoint(dryRun);
+  const status = await directStatus(true);
+  return { dryRun, checkpoint, status, plannedChanges: [] };
+}
+
+async function advertisingStatus(dryRun = false) {
+  const elama = await elamaStatus(true);
+  const direct = await directStatus(true);
+  const campaigns = (elama.campaigns || []).length + (direct.campaigns || []).length;
+  return { dryRun, elamaAvailable: elama.cabinetAvailable, directAvailable: direct.cabinetAvailable, campaigns, lastCheckedAt: new Date().toISOString(), errors: [...(elama.errors || []), ...(direct.errors || [])] };
 }
 
 let allowedRootsState = [];
@@ -981,6 +1168,10 @@ async function restoreCommit(projectPath, commit, dryRun = false) {
 async function systemStatus(projects) {
   const recovery = await loadRecoveryConfig();
   const githubRegistry = await loadGitHubRegistryProjects();
+  const elama = await loadElamaState().catch(() => ({ checkedAt: "", campaigns: [], changes: [] }));
+  const direct = await loadDirectState().catch(() => ({ checkedAt: "", campaigns: [], changes: [] }));
+  const elamaConfig = await loadElamaConfig().catch(() => ({ url: "" }));
+  const directConfig = await loadDirectConfig().catch(() => ({ url: "" }));
   const githubCounts = {
     projects: githubRegistry.length,
     synchronized: 0,
@@ -1012,7 +1203,13 @@ async function systemStatus(projects) {
       githubStatus: recovery.githubStatus || "unknown",
       githubProjects: githubCounts.projects,
       githubSynchronized: githubCounts.synchronized,
-      githubProblematic: githubCounts.problematic
+      githubProblematic: githubCounts.problematic,
+      advertising: {
+        elamaAvailable: Boolean(elamaConfig.url),
+        directAvailable: Boolean(directConfig.url),
+        lastCheckedAt: recovery.lastCheckedAt || "",
+        campaigns: (elama.campaigns || []).length + (direct.campaigns || []).length
+      }
     }
   };
 }
@@ -1313,6 +1510,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ,{ name: "deploy_check", description: "Проверка доступности сайта и HTTPS", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "deploy_prepare", description: "Подготовка к deploy через backup и checkpoint", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "deploy_history", description: "История последних публикаций", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "elama_status", description: "Состояние кабинета eLama, браузера и сохранённого state", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "elama_open", description: "Открытие кабинета eLama в существующем Edge", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "elama_campaigns_check", description: "Проверка кампаний eLama без изменений", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "elama_checkpoint", description: "Сохранение состояния eLama", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "elama_prepare_change", description: "Подготовка к изменению eLama", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "direct_status", description: "Состояние кабинета Яндекс Директ, браузера и state", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "direct_open", description: "Открытие кабинета Директа в существующем Edge", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "direct_campaign_check", description: "Проверка кампаний Директа без изменений", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "direct_prepare_change", description: "Подготовка к изменению Директа", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "direct_checkpoint", description: "Сохранение состояния Директа", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "advertising_status", description: "Единый статус eLama и Яндекс Директ", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
   ]
 }));
 
@@ -1534,6 +1742,50 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
     if (name === "deploy_history") {
       return { content: [{ type: "text", text: normalizeToolResult(await deployHistory()) }] };
+    }
+
+    if (name === "elama_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await elamaStatus(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "elama_open") {
+      return { content: [{ type: "text", text: normalizeToolResult(await elamaOpen(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "elama_campaigns_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await elamaCampaignsCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "elama_checkpoint") {
+      return { content: [{ type: "text", text: normalizeToolResult(await elamaCheckpoint(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "elama_prepare_change") {
+      return { content: [{ type: "text", text: normalizeToolResult(await elamaPrepareChange(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "direct_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await directStatus(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "direct_open") {
+      return { content: [{ type: "text", text: normalizeToolResult(await directOpen(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "direct_campaign_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await directCampaignCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "direct_prepare_change") {
+      return { content: [{ type: "text", text: normalizeToolResult(await directPrepareChange(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "direct_checkpoint") {
+      return { content: [{ type: "text", text: normalizeToolResult(await directCheckpoint(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "advertising_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await advertisingStatus(Boolean(args.dryRun))) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");

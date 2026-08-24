@@ -145,6 +145,51 @@ async function main() {
       fail("browser-state.json could not be read");
     }
 
+    const elamaStatus = await callJson(client, "elama_status", { dryRun: true });
+    if (!elamaStatus.dryRun || typeof elamaStatus.cabinetAvailable !== "boolean") {
+      fail("elama_status dryRun returned unexpected result");
+    }
+
+    const elamaConfig = JSON.parse(await fs.readFile(path.join(root, "config", "elama.json"), "utf8"));
+    if (!Array.isArray(elamaConfig.allowedActions)) {
+      fail("elama.json could not be read");
+    }
+
+    const elamaCheckpoint = await callJson(client, "elama_checkpoint", { dryRun: true });
+    if (!elamaCheckpoint.dryRun || !("checkedAt" in elamaCheckpoint)) {
+      fail("elama_checkpoint dryRun returned unexpected result");
+    }
+
+    const elamaState = JSON.parse(await fs.readFile(path.join(root, "config", "elama-state.json"), "utf8"));
+    if (!Array.isArray(elamaState.campaigns)) {
+      fail("elama-state.json could not be read");
+    }
+
+    const directStatus = await callJson(client, "direct_status", { dryRun: true });
+    if (!directStatus.dryRun || typeof directStatus.cabinetAvailable !== "boolean") {
+      fail("direct_status dryRun returned unexpected result");
+    }
+
+    const directConfig = JSON.parse(await fs.readFile(path.join(root, "config", "direct.json"), "utf8"));
+    if (!Array.isArray(directConfig.allowedActions)) {
+      fail("direct.json could not be read");
+    }
+
+    const directCheckpoint = await callJson(client, "direct_checkpoint", { dryRun: true });
+    if (!directCheckpoint.dryRun || !("checkedAt" in directCheckpoint)) {
+      fail("direct_checkpoint dryRun returned unexpected result");
+    }
+
+    const directState = JSON.parse(await fs.readFile(path.join(root, "config", "direct-state.json"), "utf8"));
+    if (!Array.isArray(directState.campaigns)) {
+      fail("direct-state.json could not be read");
+    }
+
+    const advertisingStatus = await callJson(client, "advertising_status", { dryRun: true });
+    if (!advertisingStatus.dryRun || typeof advertisingStatus.elamaAvailable !== "boolean" || typeof advertisingStatus.directAvailable !== "boolean") {
+      fail("advertising_status dryRun returned unexpected result");
+    }
+
     const crmStatus = await callJson(client, "crm_status", { dryRun: true });
     if (!crmStatus.dryRun || typeof crmStatus.crm !== "string" || typeof crmStatus.api !== "string") {
       fail("crm_status dryRun returned unexpected result");
