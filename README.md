@@ -6,10 +6,13 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 
 - `server.mjs` - MCP server and tool implementations
 - `config/allowed-roots.json` - source of allowed project roots
+- `config/projects.json` - registry of managed projects
 - `backups/` - project archives and file backups
 - `logs/` - operational logs
 - `logs/actions.log` - action audit trail
+- `logs/projects.log` - project registry log
 - `exchange/projects/<project-name>/` - control structure per project
+- `exchange/registry.json` - registry mirror for MCP state
 - `temp/` - temporary runtime files
 - `smoke-test.mjs` - local smoke test
 
@@ -30,19 +33,22 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `safe_change`
 - `register_project`
 - `unregister_project`
+- `project_manager`
+- `discover_projects`
 
 ## Работа с проектами
 
 - Все операции ограничены путями из `config/allowed-roots.json`.
-- `system_status` автоматически показывает текущие зарегистрированные проекты.
-- `project_scan` выполняет глубокую проверку структуры без изменения файлов.
-- `safe_change` подготавливает проект через backup и checkpoint.
+- `system_status` показывает текущее состояние всех зарегистрированных проектов.
+- `project_scan` выполняет глубокую проверку структуры без изменений.
+- `safe_change` готовит backup и checkpoint перед изменениями.
+- `project_manager` дает единый интерфейс для списка, проверки, backup, checkpoint и health.
 
 ## Подключение новых проектов
 
 1. Вызвать `register_project` с `name` и `path`.
 2. При необходимости сначала использовать `dryRun: true`.
-3. После успешной регистрации проект добавляется в `allowed-roots.json`.
+3. После регистрации проект добавляется в `config/allowed-roots.json`.
 4. Создается структура `exchange/projects/<project-name>/`.
 5. Для Git-проектов фиксируются branch, last commit и remote.
 
@@ -50,11 +56,11 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 
 - Все архивы и file-backups сохраняются только в `F:\MCP-CLEAN\backups`.
 - Имена архивов содержат timestamp.
-- Результаты backup включают путь, размер, информацию о проекте и список архивов.
+- Результаты backup включают путь, размер, информацию о проекте и список созданных архивов.
 
 ## Git checkpoint
 
-- `git_checkpoint` делает stage, commit и push в `origin main`.
+- `git_checkpoint` выполняет stage, commit и push в `origin main`.
 - Поддерживается `dryRun` для безопасной проверки без изменений.
 
 ## Rollback
@@ -67,6 +73,7 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 
 - `logs/mcp-clean.log` - операционные записи.
 - `logs/actions.log` - журнал действий с датой, инструментом, проектом, действием и результатом.
+- `logs/projects.log` - журнал добавления, удаления, backup, checkpoint и restore для проектов.
 
 ## Схема работы
 
@@ -74,6 +81,6 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 2. Посмотреть систему через `system_status`.
 3. Проанализировать проект через `project_scan`.
 4. Подготовить изменение через `safe_change`.
-5. Зарегистрировать новый проект через `register_project`.
-6. При необходимости создать checkpoint через `git_checkpoint`.
-7. При необходимости откатить проект через `restore_project`.
+5. При необходимости зарегистрировать проект через `register_project`.
+6. Создать checkpoint через `git_checkpoint`.
+7. Вернуть проект через `restore_project`, если нужен rollback.

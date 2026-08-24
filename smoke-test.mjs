@@ -85,6 +85,16 @@ async function main() {
       fail("git_status_all returned unexpected result");
     }
 
+    const managerList = await callJson(client, "project_manager", { command: "list" });
+    if (!Array.isArray(managerList.projects) || managerList.projects.length < 1) {
+      fail("project_manager list returned unexpected result");
+    }
+
+    const discovery = await callJson(client, "discover_projects", { dryRun: true });
+    if (discovery.dryRun !== true || discovery.root !== "C:\\Users\\oleg\\codex-test") {
+      fail("discover_projects dryRun returned unexpected result");
+    }
+
     const registerPreview = await callJson(client, "register_project", {
       name: tempProjectName,
       path: tempProject,

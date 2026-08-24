@@ -14,6 +14,9 @@ const TEMP = path.join(ROOT, "temp");
 const EXCHANGE = path.join(ROOT, "exchange");
 const EXCHANGE_PROJECTS = path.join(EXCHANGE, "projects");
 const EXCHANGE_REGISTRY = path.join(EXCHANGE, "registry.json");
+const PROJECTS_CONFIG = path.join(ROOT, "config", "projects.json");
+const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
+const PROJECTS_LOG = path.join(LOGS, "projects.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -36,8 +39,10 @@ async function bootstrap() {
     fs.mkdir(TEMP, { recursive: true }),
     fs.mkdir(EXCHANGE, { recursive: true }),
     fs.mkdir(EXCHANGE_PROJECTS, { recursive: true })
-  ]);
+  ]); 
   await fs.appendFile(ACTIONS_LOG, "", "utf8");
+  await fs.appendFile(PROJECTS_LOG, "", "utf8");
+  await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -87,6 +92,23 @@ async function loadConfig() {
     throw createError("CONFIG_ERROR", "allowed-roots.json must contain readWrite array");
   }
   return config;
+}
+
+async function loadProjectsConfig() {
+  const raw = await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.projects)) {
+      return { projects: [] };
+    }
+    return parsed;
+  } catch {
+    return { projects: [] };
+  }
+}
+
+async function saveProjectsConfig(data) {
+  await fs.writeFile(PROJECTS_CONFIG, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
 let allowedRootsState = [];
@@ -292,6 +314,19 @@ async function logAction(tool, project, action, result) {
   await fs.appendFile(ACTIONS_LOG, `${new Date().toISOString()} | ${tool} | ${project || ""} | ${action} | ${result}\n`, "utf8");
 }
 
+async function logProject(action, project, result) {
+  await fs.appendFile(PROJECTS_LOG, `${new Date().toISOString()} | ${action} | ${project || ""} | ${result}\n`, "utf8");
+}
+
+async function loadProjectsRegistry() {
+  const data = await loadProjectsConfig();
+  return data.projects || [];
+}
+
+async function saveProjectsRegistry(projects) {
+  await saveProjectsConfig({ projects });
+}
+
 async function readRegistry() {
   const raw = await fs.readFile(EXCHANGE_REGISTRY, "utf8").catch(() => "{}");
   try {
@@ -323,6 +358,35 @@ async function ensureProjectControlStructure(projectName) {
     "utf8"
   );
   return projectDir;
+}
+
+async function updateProjectsRegistry(entry) {
+  const projects = await loadProjectsRegistry();
+  const index = projects.findIndex(item => item.name === entry.name);
+  const next = {
+    name: entry.name,
+    path: normalizePath(entry.path),
+    type: entry.type || "git",
+    remote: entry.remote || "",
+    registeredAt: entry.registeredAt || new Date().toISOString(),
+    lastCheckpoint: entry.lastCheckpoint || ""
+  };
+  if (index >= 0) {
+    projects[index] = { ...projects[index], ...next };
+  } else {
+    projects.push(next);
+  }
+  await saveProjectsRegistry(projects);
+  await logProject("add", next.name, next.path);
+  return next;
+}
+
+async function removeProjectsRegistry(name) {
+  const projects = await loadProjectsRegistry();
+  const next = projects.filter(item => item.name !== name);
+  await saveProjectsRegistry(next);
+  await logProject("remove", name, "ok");
+  return next;
 }
 
 async function listProjectControlFiles(projectName) {
@@ -382,6 +446,14 @@ async function registerProject(projectName, projectPath, dryRun = false) {
     registeredAt: new Date().toISOString()
   };
   await writeRegistry(registry);
+  const projectMeta = await updateProjectsRegistry({
+    name: projectName,
+    path: projectPath,
+    type: git.isGit ? "git" : "folder",
+    remote: git.hasRemote ? "origin" : "",
+    registeredAt: new Date().toISOString(),
+    lastCheckpoint: checkpoint?.commitHash || ""
+  });
   await logAction("register_project", projectName, "register", "ok");
   return {
     dryRun: false,
@@ -389,6 +461,7 @@ async function registerProject(projectName, projectPath, dryRun = false) {
     safe,
     git,
     exchangeProjectDir: projectDir,
+    projectMeta,
     checkpoint,
     checkpointError
   };
@@ -409,6 +482,7 @@ async function unregisterProject(projectName, projectPath, dryRun = false) {
   refreshAllowedRoots(nextRoots);
   delete registry[projectName];
   await writeRegistry(registry);
+  await removeProjectsRegistry(projectName);
   await logAction("unregister_project", projectName, "unregister", "ok");
   return {
     dryRun: false,
@@ -523,6 +597,58 @@ async function safeChange(projectPath, message, dryRun = false) {
   return { dryRun: false, projectPath, backup, checkpoint };
 }
 
+async function discoverProjects(dryRun = false) {
+  const results = [];
+  const discovered = [];
+  const registered = new Set((await loadProjectsRegistry()).map(item => item.path));
+  const roots = await fs.readdir(DISCOVERY_ROOT, { withFileTypes: true }).catch(() => []);
+  for (const entry of roots) {
+    if (!entry.isDirectory()) continue;
+    const full = path.join(DISCOVERY_ROOT, entry.name);
+    const git = await gitStatus(full);
+    const registeredAlready = registered.has(normalizePath(full)) || allowedRootsState.some(root => normalizePath(root) === normalizePath(full));
+    const item = { name: entry.name, path: full, isGit: git.isGit, registered: registeredAlready, branch: git.branch, lastCommit: git.lastCommit, hasRemote: git.hasRemote };
+    results.push(item);
+    if (git.isGit && !registeredAlready) discovered.push(item);
+  }
+  const payload = { dryRun, root: DISCOVERY_ROOT, discovered, results, suggestedRegistrations: discovered.map(item => ({ name: item.name, path: item.path })) };
+  if (!dryRun) {
+    await logProject("discover", DISCOVERY_ROOT, `${discovered.length}`);
+  }
+  return payload;
+}
+
+async function projectManager(command, name, projectPath, dryRun = false) {
+  const registry = await loadProjectsRegistry();
+  const project = name ? registry.find(item => item.name === name) : null;
+  const targetPath = projectPath || project?.path || "";
+  if (command === "list") {
+    return { projects: await currentManagedProjects(), registry };
+  }
+  if (command === "check") {
+    if (!targetPath) throw createError("INVALID_ARGUMENT", "path is required");
+    const scan = await projectScan(targetPath, dryRun);
+    const status = await gitStatus(targetPath);
+    return { projectPath: targetPath, scan, status };
+  }
+  if (command === "backup") {
+    if (!targetPath) throw createError("INVALID_ARGUMENT", "path is required");
+    return await backupProjectInfo(targetPath).then(result => ({ dryRun, ...result }));
+  }
+  if (command === "checkpoint") {
+    if (!targetPath) throw createError("INVALID_ARGUMENT", "path is required");
+    const message = `Project manager checkpoint ${name || path.basename(targetPath)}`;
+    return await gitCheckpoint(targetPath, message, dryRun);
+  }
+  if (command === "health") {
+    if (!targetPath) throw createError("INVALID_ARGUMENT", "path is required");
+    const status = await gitStatus(targetPath);
+    const scan = await projectScan(targetPath, true);
+    return { projectPath: targetPath, status, scan };
+  }
+  throw createError("INVALID_ARGUMENT", "Unknown project_manager command");
+}
+
 async function loadAllowedProjects(config) {
   const allowed = config.readWrite.map(normalizePath);
   const projectMap = new Map();
@@ -579,6 +705,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     { name: "safe_change", description: "Подготовка перед изменением проекта", inputSchema: { type: "object", properties: { path: { type: "string" }, message: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path", "message"] } },
     { name: "register_project", description: "Безопасное добавление нового проекта в систему MCP-CLEAN", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } },
     { name: "unregister_project", description: "Удаление проекта из контроля MCP без удаления файлов", inputSchema: { type: "object", properties: { name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["name", "path"] } }
+    ,{ name: "project_manager", description: "Автоматический менеджер проектов", inputSchema: { type: "object", properties: { command: { type: "string" }, name: { type: "string" }, path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["command"] } }
+    ,{ name: "discover_projects", description: "Автоматическое обнаружение новых проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
   ]
 }));
 
@@ -703,6 +831,16 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       if (!projectName) throw createError("INVALID_ARGUMENT", "name is required");
       const result = await unregisterProject(projectName, projectPath, Boolean(args.dryRun));
       return { content: [{ type: "text", text: normalizeToolResult(result) }] };
+    }
+
+    if (name === "project_manager") {
+      const command = String(args.command || "").trim();
+      const result = await projectManager(command, String(args.name || "").trim(), args.path ? String(args.path) : "", Boolean(args.dryRun));
+      return { content: [{ type: "text", text: normalizeToolResult(result) }] };
+    }
+
+    if (name === "discover_projects") {
+      return { content: [{ type: "text", text: normalizeToolResult(await discoverProjects(Boolean(args.dryRun))) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");
