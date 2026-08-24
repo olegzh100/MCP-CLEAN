@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "task": "нет лидов",
+      "modules": [
+        "direct",
+        "elama",
+        "deploy",
+        "crm"
+      ]
+    }
+  ]
+}

@@ -19,6 +19,11 @@ const GITHUB_REGISTRY = path.join(ROOT, "config", "github-registry.json");
 const RECOVERY_CONFIG = path.join(ROOT, "config", "recovery.json");
 const BROWSER_CONFIG = path.join(ROOT, "config", "browser.json");
 const BROWSER_STATE = path.join(ROOT, "config", "browser-state.json");
+const REGISTRY_DIR = path.join(ROOT, "registry");
+const REGISTRY_MODULES = path.join(REGISTRY_DIR, "modules.json");
+const ORCHESTRATOR_DIR = path.join(ROOT, "orchestrator");
+const ORCHESTRATOR_TASKS = path.join(ORCHESTRATOR_DIR, "tasks.json");
+const ORCHESTRATOR_RULES = path.join(ORCHESTRATOR_DIR, "rules.json");
 const CRM_CONFIG = path.join(ROOT, "config", "crm.json");
 const DEPLOY_CONFIG = path.join(ROOT, "config", "deploy.json");
 const ELAMA_CONFIG = path.join(ROOT, "config", "elama.json");
@@ -33,6 +38,7 @@ const CRM_LOG = path.join(LOGS, "crm.log");
 const DEPLOY_LOG = path.join(LOGS, "deploy.log");
 const ELAMA_LOG = path.join(LOGS, "elama.log");
 const DIRECT_LOG = path.join(LOGS, "direct.log");
+const TASKS_LOG = path.join(LOGS, "tasks.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -54,12 +60,15 @@ async function bootstrap() {
     fs.mkdir(LOGS, { recursive: true }),
     fs.mkdir(TEMP, { recursive: true }),
     fs.mkdir(EXCHANGE, { recursive: true }),
-    fs.mkdir(EXCHANGE_PROJECTS, { recursive: true })
+    fs.mkdir(EXCHANGE_PROJECTS, { recursive: true }),
+    fs.mkdir(REGISTRY_DIR, { recursive: true }),
+    fs.mkdir(ORCHESTRATOR_DIR, { recursive: true })
   ]); 
   await fs.appendFile(ACTIONS_LOG, "", "utf8");
   await fs.appendFile(PROJECTS_LOG, "", "utf8");
   await fs.appendFile(RECOVERY_LOG, "", "utf8");
   await fs.appendFile(BROWSER_LOG, "", "utf8");
+  await fs.appendFile(TASKS_LOG, "", "utf8");
   await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(GITHUB_REGISTRY, await fs.readFile(GITHUB_REGISTRY, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
@@ -71,6 +80,9 @@ async function bootstrap() {
   await fs.writeFile(ELAMA_STATE, await fs.readFile(ELAMA_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(DIRECT_CONFIG, await fs.readFile(DIRECT_CONFIG, "utf8").catch(() => "{\"url\":\"https://direct.yandex.ru\",\"account\":\"\",\"allowedActions\":[\"read\"]}\n"), "utf8").catch(() => {});
   await fs.writeFile(DIRECT_STATE, await fs.readFile(DIRECT_STATE, "utf8").catch(() => "{\"checkedAt\":\"\",\"account\":\"\",\"campaigns\":[],\"changes\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(REGISTRY_MODULES, await fs.readFile(REGISTRY_MODULES, "utf8").catch(() => "{\"modules\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(ORCHESTRATOR_TASKS, await fs.readFile(ORCHESTRATOR_TASKS, "utf8").catch(() => "{\"tasks\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(ORCHESTRATOR_RULES, await fs.readFile(ORCHESTRATOR_RULES, "utf8").catch(() => "{\"rules\":[]}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -608,6 +620,164 @@ async function advertisingStatus(dryRun = false) {
   const direct = await directStatus(true);
   const campaigns = (elama.campaigns || []).length + (direct.campaigns || []).length;
   return { dryRun, elamaAvailable: elama.cabinetAvailable, directAvailable: direct.cabinetAvailable, campaigns, lastCheckedAt: new Date().toISOString(), errors: [...(elama.errors || []), ...(direct.errors || [])] };
+}
+
+async function loadRegistryModules() {
+  const raw = await fs.readFile(REGISTRY_MODULES, "utf8").catch(() => "{\"modules\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.modules) ? parsed.modules : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveRegistryModules(modules) {
+  await fs.writeFile(REGISTRY_MODULES, `${JSON.stringify({ modules }, null, 2)}\n`, "utf8");
+}
+
+function defaultRegistryModules() {
+  return [
+    { module: "browser", version: "1.0", tools: ["browser_status", "browser_tabs", "browser_open", "browser_checkpoint", "browser_restore"], capabilities: ["browser_control", "browser_checkpoint"], active: true, lastCheckedAt: "" },
+    { module: "github", version: "1.0", tools: ["github_status", "github_status_all", "github_checkpoint_all", "github_sync_check"], capabilities: ["github_status", "github_sync", "checkpoint"], active: true, lastCheckedAt: "" },
+    { module: "crm", version: "1.0", tools: ["crm_status", "crm_api_check", "crm_leads_check", "crm_checkpoint"], capabilities: ["api_check", "lead_check"], active: true, lastCheckedAt: "" },
+    { module: "deploy", version: "1.0", tools: ["deploy_status", "deploy_check", "deploy_prepare", "deploy_history"], capabilities: ["site_check", "publish_preparation"], active: true, lastCheckedAt: "" },
+    { module: "elama", version: "1.0", tools: ["elama_status", "elama_open", "elama_campaigns_check", "elama_checkpoint", "elama_prepare_change"], capabilities: ["campaign_check", "checkpoint"], active: true, lastCheckedAt: "" },
+    { module: "direct", version: "1.0", tools: ["direct_status", "direct_open", "direct_campaign_check", "direct_checkpoint", "direct_prepare_change"], capabilities: ["campaign_check", "checkpoint"], active: true, lastCheckedAt: "" },
+    { module: "project_manager", version: "1.0", tools: ["project_manager", "discover_projects", "register_project", "unregister_project"], capabilities: ["project_registry", "discovery"], active: true, lastCheckedAt: "" },
+    { module: "recovery", version: "1.0", tools: ["recovery_check", "sync_project_state"], capabilities: ["recovery", "state_tracking"], active: true, lastCheckedAt: "" }
+  ];
+}
+
+async function moduleList() {
+  return { modules: await loadRegistryModules() };
+}
+
+async function moduleStatus() {
+  const modules = await loadRegistryModules();
+  return {
+    modules: modules.map(module => ({
+      module: module.module,
+      version: module.version,
+      active: module.active !== false,
+      errors: Array.isArray(module.errors) ? module.errors : [],
+      lastCheckedAt: module.lastCheckedAt || ""
+    }))
+  };
+}
+
+async function moduleRegister(entry, dryRun = false) {
+  const moduleName = String(entry?.module || "").trim();
+  if (!moduleName) throw createError("INVALID_ARGUMENT", "module is required");
+  const modules = await loadRegistryModules();
+  const next = {
+    module: moduleName,
+    version: String(entry?.version || "1.0"),
+    tools: Array.isArray(entry?.tools) ? entry.tools.filter(item => typeof item === "string") : [],
+    capabilities: Array.isArray(entry?.capabilities) ? entry.capabilities.filter(item => typeof item === "string") : [],
+    active: entry?.active !== false,
+    lastCheckedAt: "",
+    errors: []
+  };
+  if (dryRun) {
+    return { dryRun: true, module: next };
+  }
+  const index = modules.findIndex(item => item.module === moduleName);
+  if (index >= 0) modules[index] = next; else modules.push(next);
+  await saveRegistryModules(modules);
+  return { dryRun: false, module: next, count: modules.length };
+}
+
+async function moduleCheck(dryRun = false) {
+  const modules = await loadRegistryModules();
+  const toolSet = new Set([
+    "ping","list_directory","read_file","write_file","project_status","backup_project","health_check","git_status_all","git_checkpoint","restore_project","system_status","project_scan","safe_change","register_project","unregister_project","project_manager","discover_projects","github_status","sync_projects","recovery_check","github_status_all","github_checkpoint_all","github_sync_check","browser_status","browser_tabs","browser_open","browser_checkpoint","browser_restore","crm_status","crm_api_check","crm_leads_check","crm_checkpoint","deploy_status","deploy_check","deploy_prepare","deploy_history","elama_status","elama_open","elama_campaigns_check","elama_checkpoint","elama_prepare_change","direct_status","direct_open","direct_campaign_check","direct_prepare_change","direct_checkpoint","advertising_status"
+  ]);
+  const results = modules.map(module => ({
+    module: module.module,
+    missingTools: (module.tools || []).filter(tool => !toolSet.has(tool)),
+    ok: Boolean(module.module) && Array.isArray(module.tools) && (module.tools || []).length > 0
+  }));
+  if (!dryRun) {
+    const stamp = new Date().toISOString();
+    await saveRegistryModules(modules.map(module => ({ ...module, lastCheckedAt: stamp })));
+  }
+  return { dryRun, results };
+}
+
+async function loadTaskRecords() {
+  const raw = await fs.readFile(ORCHESTRATOR_TASKS, "utf8").catch(() => "{\"tasks\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.tasks) ? parsed.tasks : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveTaskRecords(tasks) {
+  await fs.writeFile(ORCHESTRATOR_TASKS, `${JSON.stringify({ tasks }, null, 2)}\n`, "utf8");
+}
+
+async function loadTaskRules() {
+  const raw = await fs.readFile(ORCHESTRATOR_RULES, "utf8").catch(() => "{\"rules\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.rules) ? parsed.rules : [];
+  } catch {
+    return [];
+  }
+}
+
+function inferTaskModules(text) {
+  const value = String(text || "").toLowerCase();
+  const modules = [];
+  if (value.includes("лид") || value.includes("lead")) modules.push("direct", "elama", "crm");
+  if (value.includes("сайт") || value.includes("site") || value.includes("deploy") || value.includes("публикац")) modules.push("deploy");
+  if (value.includes("browser") || value.includes("брауз")) modules.push("browser");
+  if (value.includes("github") || value.includes("git")) modules.push("github");
+  if (value.includes("восстанов") || value.includes("recover")) modules.push("recovery");
+  if (!modules.length) modules.push("project_manager");
+  return [...new Set(modules)];
+}
+
+async function taskAnalyze(task, dryRun = false) {
+  const modules = inferTaskModules(task);
+  const plan = modules.map((module, index) => ({ step: index + 1, module }));
+  const result = { dryRun, task, modules, plan };
+  if (!dryRun) {
+    const tasks = await loadTaskRecords();
+    tasks.push({ task, modules, plan, analyzedAt: new Date().toISOString(), result: "analyzed" });
+    await saveTaskRecords(tasks);
+    await fs.appendFile(TASKS_LOG, `${new Date().toISOString()} | analyze | ${task} | ${modules.join(",")}\n`, "utf8");
+  }
+  return result;
+}
+
+async function taskPlan(task, dryRun = false) {
+  const analysis = await taskAnalyze(task, true);
+  const plan = analysis.plan.map((item, index) => `${index + 1}. ${item.module}`).join("\n");
+  const result = { dryRun, task, modules: analysis.modules, plan: analysis.plan, text: `Задача:\n${task}\n\nПлан:\n${plan}` };
+  if (!dryRun) {
+    const tasks = await loadTaskRecords();
+    tasks.push({ task, modules: analysis.modules, plan: analysis.plan, plannedAt: new Date().toISOString(), result: "planned" });
+    await saveTaskRecords(tasks);
+    await fs.appendFile(TASKS_LOG, `${new Date().toISOString()} | plan | ${task} | ${analysis.modules.join(",")}\n`, "utf8");
+  }
+  return result;
+}
+
+async function taskRunPlan(task, dryRun = false) {
+  const analysis = await taskAnalyze(task, true);
+  const results = analysis.modules.map(module => ({ module, status: dryRun ? "dryRun" : "skipped" }));
+  if (!dryRun) {
+    await fs.appendFile(TASKS_LOG, `${new Date().toISOString()} | run | ${task} | ${analysis.modules.join(",")}\n`, "utf8");
+  }
+  return { dryRun, task, modules: analysis.modules, results };
+}
+
+async function taskHistory() {
+  return { tasks: await loadTaskRecords(), rules: await loadTaskRules() };
 }
 
 let allowedRootsState = [];
@@ -1168,6 +1338,8 @@ async function restoreCommit(projectPath, commit, dryRun = false) {
 async function systemStatus(projects) {
   const recovery = await loadRecoveryConfig();
   const githubRegistry = await loadGitHubRegistryProjects();
+  const registryModules = await loadRegistryModules();
+  const taskRecords = await loadTaskRecords();
   const elama = await loadElamaState().catch(() => ({ checkedAt: "", campaigns: [], changes: [] }));
   const direct = await loadDirectState().catch(() => ({ checkedAt: "", campaigns: [], changes: [] }));
   const elamaConfig = await loadElamaConfig().catch(() => ({ url: "" }));
@@ -1204,6 +1376,15 @@ async function systemStatus(projects) {
       githubProjects: githubCounts.projects,
       githubSynchronized: githubCounts.synchronized,
       githubProblematic: githubCounts.problematic,
+      modules: {
+        total: registryModules.length,
+        active: registryModules.filter(module => module.active !== false).length,
+        errors: registryModules.filter(module => Array.isArray(module.errors) && module.errors.length > 0).length
+      },
+      tasks: {
+        active: taskRecords.length,
+        lastPlan: taskRecords.length ? taskRecords[taskRecords.length - 1].plan || [] : []
+      },
       advertising: {
         elamaAvailable: Boolean(elamaConfig.url),
         directAvailable: Boolean(directConfig.url),
@@ -1494,6 +1675,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ,{ name: "github_status", description: "GitHub-статус проекта: remote, commit, branch, divergence, availability", inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
     ,{ name: "sync_projects", description: "Синхронизация registry MCP-CLEAN и GitHub-ориентированных метаданных", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "recovery_check", description: "Проверка готовности проектов к восстановлению из registry и GitHub", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "module_list", description: "Список зарегистрированных MCP-модулей", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "module_status", description: "Статус MCP-модулей", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "module_register", description: "Регистрация нового MCP-модуля", inputSchema: { type: "object", properties: { module: { type: "string" }, version: { type: "string" }, tools: { type: "array", items: { type: "string" } }, capabilities: { type: "array", items: { type: "string" } }, active: { type: "boolean", default: true }, dryRun: { type: "boolean", default: false } }, required: ["module"] } }
+    ,{ name: "module_check", description: "Проверка файлов, инструментов и регистрации модулей", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "task_analyze", description: "Анализ задачи и подбор модулей", inputSchema: { type: "object", properties: { task: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["task"] } }
+    ,{ name: "task_plan", description: "Создание плана выполнения задачи", inputSchema: { type: "object", properties: { task: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["task"] } }
+    ,{ name: "task_run_plan", description: "Запуск плана задачи в безопасном режиме", inputSchema: { type: "object", properties: { task: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["task"] } }
+    ,{ name: "task_history", description: "История задач и планов", inputSchema: { type: "object", properties: {} } }
     ,{ name: "github_status_all", description: "Единый статус всех GitHub-проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "github_checkpoint_all", description: "Массовая точка сохранения всех проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "github_sync_check", description: "Проверка расхождений local/remote без merge", inputSchema: { type: "object", properties: { path: { type: "string" }, dryRun: { type: "boolean", default: false } }, required: ["path"] } }
@@ -1669,6 +1858,46 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
     if (name === "recovery_check") {
       return { content: [{ type: "text", text: normalizeToolResult(await recoveryCheck()) }] };
+    }
+
+    if (name === "module_list") {
+      return { content: [{ type: "text", text: normalizeToolResult(await moduleList()) }] };
+    }
+
+    if (name === "module_status") {
+      return { content: [{ type: "text", text: normalizeToolResult(await moduleStatus()) }] };
+    }
+
+    if (name === "module_register") {
+      const module = String(args.module || "").trim();
+      if (!module) throw createError("INVALID_ARGUMENT", "module is required");
+      return { content: [{ type: "text", text: normalizeToolResult(await moduleRegister({ module, version: args.version, tools: args.tools, capabilities: args.capabilities, active: args.active }, Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "module_check") {
+      return { content: [{ type: "text", text: normalizeToolResult(await moduleCheck(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "task_analyze") {
+      const task = String(args.task || "").trim();
+      if (!task) throw createError("INVALID_ARGUMENT", "task is required");
+      return { content: [{ type: "text", text: normalizeToolResult(await taskAnalyze(task, Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "task_plan") {
+      const task = String(args.task || "").trim();
+      if (!task) throw createError("INVALID_ARGUMENT", "task is required");
+      return { content: [{ type: "text", text: normalizeToolResult(await taskPlan(task, Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "task_run_plan") {
+      const task = String(args.task || "").trim();
+      if (!task) throw createError("INVALID_ARGUMENT", "task is required");
+      return { content: [{ type: "text", text: normalizeToolResult(await taskRunPlan(task, Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "task_history") {
+      return { content: [{ type: "text", text: normalizeToolResult(await taskHistory()) }] };
     }
 
     if (name === "sync_project_state") {

@@ -225,6 +225,36 @@ async function main() {
       fail("recovery.json could not be read");
     }
 
+    const moduleList = await callJson(client, "module_list", {});
+    if (!Array.isArray(moduleList.modules) || moduleList.modules.length < 8) {
+      fail("module_list returned unexpected result");
+    }
+
+    const moduleStatus = await callJson(client, "module_status", {});
+    if (!Array.isArray(moduleStatus.modules) || moduleStatus.modules.length < 8) {
+      fail("module_status returned unexpected result");
+    }
+
+    const moduleCheck = await callJson(client, "module_check", { dryRun: true });
+    if (!moduleCheck.dryRun || !Array.isArray(moduleCheck.results)) {
+      fail("module_check dryRun returned unexpected result");
+    }
+
+    const taskAnalyze = await callJson(client, "task_analyze", { task: "проверить почему нет лидов", dryRun: true });
+    if (!taskAnalyze.dryRun || !Array.isArray(taskAnalyze.modules) || taskAnalyze.modules.length === 0) {
+      fail("task_analyze dryRun returned unexpected result");
+    }
+
+    const taskPlan = await callJson(client, "task_plan", { task: "проверить почему нет лидов", dryRun: true });
+    if (!taskPlan.dryRun || !Array.isArray(taskPlan.plan) || taskPlan.plan.length === 0) {
+      fail("task_plan dryRun returned unexpected result");
+    }
+
+    const taskHistory = await callJson(client, "task_history", {});
+    if (!Array.isArray(taskHistory.tasks) || !Array.isArray(taskHistory.rules)) {
+      fail("task_history returned unexpected result");
+    }
+
     const registerPreview = await callJson(client, "register_project", {
       name: tempProjectName,
       path: tempProject,

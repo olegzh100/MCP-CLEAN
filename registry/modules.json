@@ -1,0 +1,134 @@
+{
+  "modules": [
+    {
+      "module": "browser",
+      "version": "1.0",
+      "tools": [
+        "browser_status",
+        "browser_tabs",
+        "browser_open",
+        "browser_checkpoint",
+        "browser_restore"
+      ],
+      "capabilities": [
+        "browser_control",
+        "browser_checkpoint"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "github",
+      "version": "1.0",
+      "tools": [
+        "github_status",
+        "github_status_all",
+        "github_checkpoint_all",
+        "github_sync_check"
+      ],
+      "capabilities": [
+        "github_status",
+        "github_sync",
+        "checkpoint"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "crm",
+      "version": "1.0",
+      "tools": [
+        "crm_status",
+        "crm_api_check",
+        "crm_leads_check",
+        "crm_checkpoint"
+      ],
+      "capabilities": [
+        "api_check",
+        "lead_check"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "deploy",
+      "version": "1.0",
+      "tools": [
+        "deploy_status",
+        "deploy_check",
+        "deploy_prepare",
+        "deploy_history"
+      ],
+      "capabilities": [
+        "site_check",
+        "publish_preparation"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "elama",
+      "version": "1.0",
+      "tools": [
+        "elama_status",
+        "elama_open",
+        "elama_campaigns_check",
+        "elama_checkpoint",
+        "elama_prepare_change"
+      ],
+      "capabilities": [
+        "campaign_check",
+        "checkpoint"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "direct",
+      "version": "1.0",
+      "tools": [
+        "direct_status",
+        "direct_open",
+        "direct_campaign_check",
+        "direct_checkpoint",
+        "direct_prepare_change"
+      ],
+      "capabilities": [
+        "campaign_check",
+        "checkpoint"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "project_manager",
+      "version": "1.0",
+      "tools": [
+        "project_manager",
+        "discover_projects",
+        "register_project",
+        "unregister_project"
+      ],
+      "capabilities": [
+        "project_registry",
+        "discovery"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    },
+    {
+      "module": "recovery",
+      "version": "1.0",
+      "tools": [
+        "recovery_check",
+        "sync_project_state"
+      ],
+      "capabilities": [
+        "recovery",
+        "state_tracking"
+      ],
+      "active": true,
+      "lastCheckedAt": ""
+    }
+  ]
+}
