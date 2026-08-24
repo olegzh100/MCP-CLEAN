@@ -61,7 +61,7 @@ async function main() {
     }
 
     const system = await callJson(client, "system_status", {});
-    if (!Array.isArray(system.projects) || system.projects.length < 7) {
+    if (!Array.isArray(system.projects) || system.projects.length < 7 || !system.recovery) {
       fail("system_status returned unexpected result");
     }
 
@@ -108,6 +108,16 @@ async function main() {
     const recovery = await callJson(client, "recovery_check", {});
     if (!Array.isArray(recovery.checks) || typeof recovery.ok !== "boolean") {
       fail("recovery_check returned unexpected result");
+    }
+
+    const syncState = await callJson(client, "sync_project_state", { path: root, dryRun: true });
+    if (syncState.path !== root || !syncState.local || !syncState.remote || !syncState.difference) {
+      fail("sync_project_state dryRun returned unexpected result");
+    }
+
+    const recoveryJson = JSON.parse(await fs.readFile(path.join(root, "config", "recovery.json"), "utf8"));
+    if (!Array.isArray(recoveryJson.projects)) {
+      fail("recovery.json could not be read");
     }
 
     const registerPreview = await callJson(client, "register_project", {

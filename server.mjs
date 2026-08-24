@@ -15,8 +15,10 @@ const EXCHANGE = path.join(ROOT, "exchange");
 const EXCHANGE_PROJECTS = path.join(EXCHANGE, "projects");
 const EXCHANGE_REGISTRY = path.join(EXCHANGE, "registry.json");
 const PROJECTS_CONFIG = path.join(ROOT, "config", "projects.json");
+const RECOVERY_CONFIG = path.join(ROOT, "config", "recovery.json");
 const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
 const PROJECTS_LOG = path.join(LOGS, "projects.log");
+const RECOVERY_LOG = path.join(LOGS, "recovery.log");
 const GIT_CANDIDATES = ["git", "C:\\Program Files\\Git\\cmd\\git.exe", "C:\\Program Files\\Git\\bin\\git.exe"];
 const MANAGED_PROJECTS = [
   "CRM",
@@ -42,7 +44,9 @@ async function bootstrap() {
   ]); 
   await fs.appendFile(ACTIONS_LOG, "", "utf8");
   await fs.appendFile(PROJECTS_LOG, "", "utf8");
+  await fs.appendFile(RECOVERY_LOG, "", "utf8");
   await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
 }
 
 function normalizePath(target) {
@@ -112,6 +116,23 @@ async function loadProjectsConfig() {
 
 async function saveProjectsConfig(data) {
   await fs.writeFile(PROJECTS_CONFIG, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
+async function loadRecoveryConfig() {
+  const raw = await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.projects)) {
+      parsed.projects = [];
+    }
+    return parsed;
+  } catch {
+    return { lastCheckedAt: "", projects: [], lastGitHubSync: "", githubStatus: "unknown" };
+  }
+}
+
+async function saveRecoveryConfig(data) {
+  await fs.writeFile(RECOVERY_CONFIG, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
 let allowedRootsState = [];
@@ -363,6 +384,22 @@ async function gitRemoteState(projectPath) {
   return info;
 }
 
+async function syncProjectState(projectPath) {
+  const local = await gitStatus(projectPath);
+  const remote = await gitRemoteState(projectPath);
+  const difference = {
+    localCommit: local.lastCommit,
+    remoteCommit: remote.remoteCommit,
+    branch: local.branch,
+    divergence: remote.divergence,
+    dirty: local.dirty,
+    remoteAvailable: remote.remoteAvailable,
+    hasRemote: local.hasRemote,
+    status: !local.isGit ? "no-git" : remote.remoteAvailable ? (remote.divergence === "synced" ? "synced" : "sync-needed") : "no-access"
+  };
+  return { path: projectPath, local, remote, difference };
+}
+
 async function loadProjectsRegistry() {
   const data = await loadProjectsConfig();
   return data.projects || [];
@@ -546,13 +583,30 @@ async function restoreCommit(projectPath, commit, dryRun = false) {
 }
 
 async function systemStatus(projects) {
+  const recovery = await loadRecoveryConfig();
   const results = [];
   for (const { name, path: projectPath } of projects) {
     const exists = await fs.stat(projectPath).then(s => s.isDirectory()).catch(() => false);
     const git = exists ? await gitStatus(projectPath) : { isGit: false, branch: null, lastCommit: null, dirty: null, hasRemote: false, originConnected: false, status: "missing" };
-    results.push({ name, path: projectPath, exists, ...git });
+    const recoveryEntry = Array.isArray(recovery.projects) ? recovery.projects.find(item => item.name === name) : null;
+    results.push({
+      name,
+      path: projectPath,
+      exists,
+      ...git,
+      recoveryStatus: recoveryEntry ? (recoveryEntry.recoverable ? "OK" : "требуется sync") : "нет доступа",
+      githubStatus: recoveryEntry ? recoveryEntry.githubStatus || recovery.githubStatus : recovery.githubStatus || "unknown"
+    });
   }
-  return results;
+  return {
+    projects: results,
+    recovery: {
+      lastCheckedAt: recovery.lastCheckedAt || "",
+      lastGitHubSync: recovery.lastGitHubSync || "",
+      projectsCount: results.length,
+      githubStatus: recovery.githubStatus || "unknown"
+    }
+  };
 }
 
 async function currentManagedProjects() {
@@ -641,7 +695,17 @@ async function recoveryCheck() {
       recoverable: exists && status.isGit && (remote.divergence === "synced" || remote.divergence === "unknown")
     });
   }
-  return { ok: checks.every(item => item.recoverable || !item.exists), checks };
+  const lastGitHubSync = config.lastGitHubSync || "";
+  const githubStatus = checks.some(item => item.repositoryAvailable) ? "available" : "unknown";
+  const payload = { ok: checks.every(item => item.recoverable || !item.exists), lastCheckedAt: new Date().toISOString(), lastGitHubSync, githubStatus, checks };
+  await saveRecoveryConfig({
+    lastCheckedAt: payload.lastCheckedAt,
+    projects: checks,
+    lastGitHubSync,
+    githubStatus
+  });
+  await fs.appendFile(RECOVERY_LOG, `${payload.lastCheckedAt} | recovery_check | ${checks.length} | ${payload.ok ? "ok" : "needs_attention"}\n`, "utf8");
+  return payload;
 }
 
 async function projectScan(projectPath, dryRun = false) {
@@ -893,8 +957,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     }
 
     if (name === "git_status_all") {
-      const projects = await systemStatus(managedProjects);
-      return { content: [{ type: "text", text: normalizeToolResult({ projects }) }] };
+      const status = await systemStatus(managedProjects);
+      return { content: [{ type: "text", text: normalizeToolResult({ projects: status.projects }) }] };
     }
 
     if (name === "git_checkpoint") {
@@ -919,7 +983,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     }
 
     if (name === "system_status") {
-      return { content: [{ type: "text", text: normalizeToolResult({ projects: await systemStatus(await currentManagedProjects()) }) }] };
+      return { content: [{ type: "text", text: normalizeToolResult(await systemStatus(await currentManagedProjects())) }] };
     }
 
     if (name === "project_scan") {
@@ -975,6 +1039,12 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       return { content: [{ type: "text", text: normalizeToolResult(await recoveryCheck()) }] };
     }
 
+    if (name === "sync_project_state") {
+      const projectPath = assertAllowed(args.path, isAllowed);
+      const result = await syncProjectState(projectPath);
+      return { content: [{ type: "text", text: normalizeToolResult({ dryRun: Boolean(args.dryRun), ...result }) }] };
+    }
+
     throw createError("UNKNOWN_TOOL", "Unknown tool");
   } catch (error) {
     return toErrorResult(error);
@@ -983,5 +1053,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
 await server.connect(new StdioServerTransport());
 console.error("MCP CLEAN READY");
+
+
 
 

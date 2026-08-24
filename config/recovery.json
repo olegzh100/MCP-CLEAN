@@ -1,0 +1,139 @@
+{
+  "lastCheckedAt": "2026-08-24T20:51:04.111Z",
+  "projects": [
+    {
+      "name": "MCP-CLEAN",
+      "path": "F:\\MCP-CLEAN",
+      "exists": true,
+      "branch": "main",
+      "localCommit": "f76d5d2",
+      "remote": "https://github.com/olegzh100/MCP-CLEAN.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "CRM",
+      "path": "C:\\Users\\oleg\\codex-test\\CRM",
+      "exists": true,
+      "branch": "fix/education-inbound-leads-ui",
+      "localCommit": "a43eb00e",
+      "remote": "https://github.com/olegzh100/CRM.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "CRM-Mobile-2",
+      "path": "C:\\Users\\oleg\\codex-test\\CRM-Mobile-2",
+      "exists": true,
+      "branch": null,
+      "localCommit": null,
+      "remote": "",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": false
+    },
+    {
+      "name": "mba-academy-site",
+      "path": "C:\\Users\\oleg\\codex-test\\mba-academy-site",
+      "exists": true,
+      "branch": "main",
+      "localCommit": "a6ae144",
+      "remote": "https://github.com/olegzh100/mba-academy-site.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "MBA-ALBUMS",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS",
+      "exists": true,
+      "branch": "preza-full-album-galleries",
+      "localCommit": "6f8e583",
+      "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "MBA-ALBUMS-PROD",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-PROD",
+      "exists": true,
+      "branch": "main",
+      "localCommit": "fcbf3a5",
+      "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "MBA-ALBUMS-TILDA-OFF-2",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-TILDA-OFF-2",
+      "exists": true,
+      "branch": "mobile-site-v2",
+      "localCommit": "319b796",
+      "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "MBA-ALBUMS-WEB2-CONNECT",
+      "path": "C:\\Users\\oleg\\codex-test\\MBA-ALBUMS-WEB2-CONNECT",
+      "exists": true,
+      "branch": "web2-connect-prep",
+      "localCommit": "1f69985",
+      "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "Site-universe",
+      "path": "C:\\Users\\oleg\\codex-test\\Site-universe",
+      "exists": true,
+      "branch": "main",
+      "localCommit": "0482e42",
+      "remote": "https://github.com/olegzh100/Site-universe.git",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    },
+    {
+      "name": "Site-wedding",
+      "path": "C:\\Users\\oleg\\codex-test\\Site-wedding",
+      "exists": true,
+      "branch": null,
+      "localCommit": null,
+      "remote": "",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": false
+    },
+    {
+      "name": "Content-Automation",
+      "path": "C:\\Users\\oleg\\codex-test\\Content-Automation",
+      "exists": true,
+      "branch": "main",
+      "localCommit": "34261b7",
+      "remote": "",
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
+    }
+  ],
+  "lastGitHubSync": "",
+  "githubStatus": "unknown"
+}
