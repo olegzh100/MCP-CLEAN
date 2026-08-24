@@ -110,6 +110,21 @@ async function main() {
       fail("recovery_check returned unexpected result");
     }
 
+    const githubAllPreview = await callJson(client, "github_status_all", { dryRun: true });
+    if (!githubAllPreview.dryRun || !Array.isArray(githubAllPreview.projects)) {
+      fail("github_status_all dryRun returned unexpected result");
+    }
+
+    const githubSyncCheck = await callJson(client, "github_sync_check", { path: root, dryRun: true });
+    if (githubSyncCheck.path !== root || !("LOCAL" in githubSyncCheck) || !("REMOTE" in githubSyncCheck) || !("DIFFERENCE" in githubSyncCheck)) {
+      fail("github_sync_check returned unexpected result");
+    }
+
+    const githubCheckpointPreview = await callJson(client, "github_checkpoint_all", { dryRun: true });
+    if (!githubCheckpointPreview.dryRun || !Array.isArray(githubCheckpointPreview.results)) {
+      fail("github_checkpoint_all dryRun returned unexpected result");
+    }
+
     const syncState = await callJson(client, "sync_project_state", { path: root, dryRun: true });
     if (syncState.path !== root || !syncState.local || !syncState.remote || !syncState.difference) {
       fail("sync_project_state dryRun returned unexpected result");

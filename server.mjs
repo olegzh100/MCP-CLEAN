@@ -15,6 +15,7 @@ const EXCHANGE = path.join(ROOT, "exchange");
 const EXCHANGE_PROJECTS = path.join(EXCHANGE, "projects");
 const EXCHANGE_REGISTRY = path.join(EXCHANGE, "registry.json");
 const PROJECTS_CONFIG = path.join(ROOT, "config", "projects.json");
+const GITHUB_REGISTRY = path.join(ROOT, "config", "github-registry.json");
 const RECOVERY_CONFIG = path.join(ROOT, "config", "recovery.json");
 const DISCOVERY_ROOT = "C:\\Users\\oleg\\codex-test";
 const PROJECTS_LOG = path.join(LOGS, "projects.log");
@@ -46,6 +47,7 @@ async function bootstrap() {
   await fs.appendFile(PROJECTS_LOG, "", "utf8");
   await fs.appendFile(RECOVERY_LOG, "", "utf8");
   await fs.writeFile(PROJECTS_CONFIG, await fs.readFile(PROJECTS_CONFIG, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
+  await fs.writeFile(GITHUB_REGISTRY, await fs.readFile(GITHUB_REGISTRY, "utf8").catch(() => "{\"projects\":[]}\n"), "utf8").catch(() => {});
   await fs.writeFile(RECOVERY_CONFIG, await fs.readFile(RECOVERY_CONFIG, "utf8").catch(() => "{\"lastCheckedAt\":\"\",\"projects\":[],\"lastGitHubSync\":\"\",\"githubStatus\":\"unknown\"}\n"), "utf8").catch(() => {});
 }
 
@@ -112,6 +114,43 @@ async function loadProjectsConfig() {
   } catch {
     return { projects: [] };
   }
+}
+
+async function loadGitHubRegistry() {
+  const raw = await fs.readFile(GITHUB_REGISTRY, "utf8").catch(() => "{\"projects\":[]}\n");
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return { projects: parsed };
+    }
+    const projects = Array.isArray(parsed?.projects) ? parsed.projects : [];
+    if (projects.length > 0) {
+      return parsed;
+    }
+    const seed = await loadProjectsConfig().then(data => Array.isArray(data?.projects) ? data.projects : []).catch(() => []);
+    return { projects: seed.map(project => ({
+      name: project.name,
+      path: project.path,
+      remote: project.remote || "",
+      branch: project.branch || null,
+      lastCheckpoint: project.lastCheckpoint || "",
+      lastSync: project.lastSync || ""
+    })) };
+  } catch {
+    const projects = await loadProjectsConfig().then(data => Array.isArray(data?.projects) ? data.projects : []).catch(() => []);
+    return { projects: projects.map(project => ({
+      name: project.name,
+      path: project.path,
+      remote: project.remote || "",
+      branch: project.branch || null,
+      lastCheckpoint: project.lastCheckpoint || "",
+      lastSync: project.lastSync || ""
+    })) };
+  }
+}
+
+async function saveGitHubRegistry(data) {
+  await fs.writeFile(GITHUB_REGISTRY, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
 async function saveProjectsConfig(data) {
@@ -400,6 +439,106 @@ async function syncProjectState(projectPath) {
   return { path: projectPath, local, remote, difference };
 }
 
+async function loadGitHubRegistryProjects() {
+  const registry = await loadGitHubRegistry();
+  return Array.isArray(registry.projects) ? registry.projects : [];
+}
+
+async function saveGitHubRegistryProjects(projects) {
+  await saveGitHubRegistry({ projects });
+}
+
+async function githubStatusAll(dryRun = false) {
+  const registryProjects = await loadGitHubRegistryProjects();
+  const projects = [];
+  for (const project of registryProjects) {
+    const projectPath = normalizePath(project.path);
+    const exists = await fs.stat(projectPath).then(s => s.isDirectory()).catch(() => false);
+    const local = exists ? await gitStatus(projectPath) : { isGit: false, branch: null, lastCommit: null, dirty: null, hasRemote: false, originConnected: false, status: "error" };
+    const remote = dryRun
+      ? { remote: project.remote || "", remoteAvailable: Boolean(project.remote || local.hasRemote), remoteCommit: null, divergence: "unknown", available: exists && local.isGit }
+      : (exists ? await gitRemoteState(projectPath) : { remote: project.remote || "", remoteAvailable: false, remoteCommit: null, divergence: "error", available: false });
+    const state = !exists || !local.isGit
+      ? "error"
+      : dryRun
+        ? (local.dirty ? "modified" : "synchronized")
+        : remote.remoteAvailable
+          ? (remote.divergence === "synced" ? "synchronized" : (local.dirty ? "modified" : (remote.divergence === "diverged" ? (remote.remoteCommit && local.lastCommit && remote.remoteCommit.startsWith(local.lastCommit) ? "ahead" : "behind") : "error")))
+          : "error";
+    projects.push({
+      name: project.name,
+      path: projectPath,
+      remote: project.remote || remote.remote || "",
+      available: exists && local.isGit && Boolean((project.remote || remote.remote) || local.hasRemote),
+      branch: local.branch,
+      localCommit: local.lastCommit,
+      remoteCommit: remote.remoteCommit,
+      state
+    });
+  }
+  const payload = { dryRun, projects };
+  if (!dryRun) {
+    await saveGitHubRegistryProjects(projects.map(project => ({
+      name: project.name,
+      path: project.path,
+      remote: project.remote,
+      branch: project.branch,
+      lastCheckpoint: project.localCommit || "",
+      lastSync: new Date().toISOString()
+    })));
+  }
+  return payload;
+}
+
+async function githubSyncCheck(projectPath, dryRun = false) {
+  const local = await gitStatus(projectPath);
+  const remote = dryRun
+    ? { remoteCommit: null, remoteAvailable: Boolean(local.hasRemote), divergence: "unknown" }
+    : await gitRemoteState(projectPath);
+  return {
+    path: projectPath,
+    LOCAL: local.lastCommit,
+    REMOTE: remote.remoteCommit,
+    DIFFERENCE: !local.isGit ? "error" : dryRun ? (local.dirty ? "modified" : "none") : remote.remoteAvailable ? (local.lastCommit === remote.remoteCommit ? "none" : (local.dirty ? "modified" : "different")) : "error"
+  };
+}
+
+async function githubCheckpointAll(dryRun = false) {
+  const registryProjects = await loadGitHubRegistryProjects();
+  const results = [];
+  const changedProjects = [];
+  for (const project of registryProjects) {
+    const projectPath = normalizePath(project.path);
+    const status = await gitStatus(projectPath);
+    if (!status.isGit) continue;
+    const changed = Boolean(status.dirty);
+    if (changed) changedProjects.push(project.name);
+    const message = `Global checkpoint ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
+    let commitHash = null;
+    let push = "skipped";
+    let backupPath = "";
+    if (!dryRun && changed) {
+      const backup = await archiveProject(projectPath);
+      backupPath = backup.archivePath;
+      await runGit(projectPath, ["add", "--", "."]);
+      await runGit(projectPath, ["commit", "-m", message]);
+      const hash = await runGit(projectPath, ["rev-parse", "--short", "HEAD"]);
+      commitHash = hash.stdout.trim();
+      try {
+        await runGit(projectPath, ["push", "origin", "main"]);
+        push = "ok";
+      } catch (error) {
+        push = `failed: ${error.message}`;
+      }
+    }
+    results.push({ name: project.name, path: projectPath, changed, commitHash, push, backup: backupPath });
+  }
+  if (!dryRun) {
+    await saveGitHubRegistryProjects(registryProjects.map(project => ({ ...project, lastSync: new Date().toISOString(), lastCheckpoint: results.find(item => item.name === project.name)?.commitHash || project.lastCheckpoint || "" })));
+  }
+  return { dryRun, changedProjects, savedProjects: results.filter(item => item.changed).map(item => ({ name: item.name, commitHash: item.commitHash, push: item.push })), results };
+}
+
 async function loadProjectsRegistry() {
   const data = await loadProjectsConfig();
   return data.projects || [];
@@ -584,11 +723,20 @@ async function restoreCommit(projectPath, commit, dryRun = false) {
 
 async function systemStatus(projects) {
   const recovery = await loadRecoveryConfig();
+  const githubRegistry = await loadGitHubRegistryProjects();
+  const githubCounts = {
+    projects: githubRegistry.length,
+    synchronized: 0,
+    problematic: 0
+  };
   const results = [];
   for (const { name, path: projectPath } of projects) {
     const exists = await fs.stat(projectPath).then(s => s.isDirectory()).catch(() => false);
     const git = exists ? await gitStatus(projectPath) : { isGit: false, branch: null, lastCommit: null, dirty: null, hasRemote: false, originConnected: false, status: "missing" };
     const recoveryEntry = Array.isArray(recovery.projects) ? recovery.projects.find(item => item.name === name) : null;
+    const githubEntry = githubRegistry.find(item => item.name === name);
+    if (githubEntry?.lastCheckpoint && recoveryEntry?.recoverable) githubCounts.synchronized += 1;
+    if (!githubEntry || !exists || !git.isGit) githubCounts.problematic += 1;
     results.push({
       name,
       path: projectPath,
@@ -604,7 +752,10 @@ async function systemStatus(projects) {
       lastCheckedAt: recovery.lastCheckedAt || "",
       lastGitHubSync: recovery.lastGitHubSync || "",
       projectsCount: results.length,
-      githubStatus: recovery.githubStatus || "unknown"
+      githubStatus: recovery.githubStatus || "unknown",
+      githubProjects: githubCounts.projects,
+      githubSynchronized: githubCounts.synchronized,
+      githubProblematic: githubCounts.problematic
     }
   };
 }
@@ -889,6 +1040,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     ,{ name: "github_status", description: "GitHub-статус проекта: remote, commit, branch, divergence, availability", inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
     ,{ name: "sync_projects", description: "Синхронизация registry MCP-CLEAN и GitHub-ориентированных метаданных", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
     ,{ name: "recovery_check", description: "Проверка готовности проектов к восстановлению из registry и GitHub", inputSchema: { type: "object", properties: {} } }
+    ,{ name: "github_status_all", description: "Единый статус всех GitHub-проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "github_checkpoint_all", description: "Массовая точка сохранения всех проектов", inputSchema: { type: "object", properties: { dryRun: { type: "boolean", default: false } } } }
+    ,{ name: "github_sync_check", description: "Проверка расхождений local/remote без merge", inputSchema: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
   ]
 }));
 
@@ -1043,6 +1197,19 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       const projectPath = assertAllowed(args.path, isAllowed);
       const result = await syncProjectState(projectPath);
       return { content: [{ type: "text", text: normalizeToolResult({ dryRun: Boolean(args.dryRun), ...result }) }] };
+    }
+
+    if (name === "github_status_all") {
+      return { content: [{ type: "text", text: normalizeToolResult(await githubStatusAll(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "github_checkpoint_all") {
+      return { content: [{ type: "text", text: normalizeToolResult(await githubCheckpointAll(Boolean(args.dryRun))) }] };
+    }
+
+    if (name === "github_sync_check") {
+      const projectPath = assertAllowed(args.path, isAllowed);
+      return { content: [{ type: "text", text: normalizeToolResult(await githubSyncCheck(projectPath, Boolean(args.dryRun))) }] };
     }
 
     throw createError("UNKNOWN_TOOL", "Unknown tool");

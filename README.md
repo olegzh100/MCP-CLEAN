@@ -41,6 +41,9 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `sync_projects`
 - `recovery_check`
 - `sync_project_state`
+- `github_status_all`
+- `github_checkpoint_all`
+- `github_sync_check`
 
 ## Работа с проектами
 
@@ -61,6 +64,14 @@ MCP-CLEAN is a local control center for approved project folders on this machine
 - `github_status` можно использовать для проверки доступности remote и расхождения локального состояния с GitHub.
 - `recovery_check` помогает понять, можно ли безопасно восстановить состояние проекта из текущего registry.
 - `sync_project_state` показывает local, remote и difference без автоматического merge.
+
+## GitHub Manager
+
+- `github_status_all` дает единый статус всех GitHub-проектов из `config/projects.json`.
+- `github_checkpoint_all` создает массовую точку сохранения, если проект изменен.
+- `github_sync_check` показывает `LOCAL`, `REMOTE` и `DIFFERENCE` без автоматического merge.
+- `config/github-registry.json` хранит GitHub registry snapshot и служит рабочим слоем для manager-операций.
+- Восстановление и продолжение работы выполняются через проверку статуса, checkpoint и последующий push.
 
 ## Восстановление после сбоя MCP
 
