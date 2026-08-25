@@ -1,17 +1,17 @@
 {
-  "lastCheckedAt": "2026-08-24T21:50:53.909Z",
+  "lastCheckedAt": "2026-08-25T15:18:30.244Z",
   "projects": [
     {
       "name": "MCP-CLEAN",
       "path": "F:\\MCP-CLEAN",
       "exists": true,
       "branch": "main",
-      "localCommit": "4e98f99",
+      "localCommit": "97974c1",
       "remote": "https://github.com/olegzh100/MCP-CLEAN.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
-      "recoverable": true
+      "remoteCommit": "2710cc0e07a36b01318cabd1c5c62aa79e2d9129",
+      "divergence": "diverged",
+      "repositoryAvailable": true,
+      "recoverable": false
     },
     {
       "name": "CRM",
@@ -20,10 +20,10 @@
       "branch": "fix/education-inbound-leads-ui",
       "localCommit": "a43eb00e",
       "remote": "https://github.com/olegzh100/CRM.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
-      "recoverable": true
+      "remoteCommit": "b5c7389b518124bea12460b8cf6fb4709e6f8f07",
+      "divergence": "diverged",
+      "repositoryAvailable": true,
+      "recoverable": false
     },
     {
       "name": "CRM-Mobile-2",
@@ -44,9 +44,9 @@
       "branch": "main",
       "localCommit": "a6ae144",
       "remote": "https://github.com/olegzh100/mba-academy-site.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
+      "remoteCommit": "a6ae144e2db7ce51c77e4dd003db4e0d241037b1",
+      "divergence": "synced",
+      "repositoryAvailable": true,
       "recoverable": true
     },
     {
@@ -56,10 +56,10 @@
       "branch": "preza-full-album-galleries",
       "localCommit": "6f8e583",
       "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
-      "recoverable": true
+      "remoteCommit": "687b25aaedeafdef5e50e1202539beb7d8a8e24b",
+      "divergence": "diverged",
+      "repositoryAvailable": true,
+      "recoverable": false
     },
     {
       "name": "MBA-ALBUMS-PROD",
@@ -68,9 +68,9 @@
       "branch": "main",
       "localCommit": "fcbf3a5",
       "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
+      "remoteCommit": "fcbf3a5a4175d1e2e88b1485b5677145219ec484",
+      "divergence": "synced",
+      "repositoryAvailable": true,
       "recoverable": true
     },
     {
@@ -80,10 +80,10 @@
       "branch": "mobile-site-v2",
       "localCommit": "319b796",
       "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
-      "recoverable": true
+      "remoteCommit": "684c3212716f7f13b22e7d9a4540fa6dbd496557",
+      "divergence": "diverged",
+      "repositoryAvailable": true,
+      "recoverable": false
     },
     {
       "name": "MBA-ALBUMS-WEB2-CONNECT",
@@ -92,9 +92,9 @@
       "branch": "web2-connect-prep",
       "localCommit": "1f69985",
       "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
+      "remoteCommit": "1f69985cf0a4b02c8abf0de73d7dd70ecca12c27",
+      "divergence": "synced",
+      "repositoryAvailable": true,
       "recoverable": true
     },
     {
@@ -104,10 +104,10 @@
       "branch": "main",
       "localCommit": "0482e42",
       "remote": "https://github.com/olegzh100/Site-universe.git",
-      "remoteCommit": null,
-      "divergence": "unknown",
-      "repositoryAvailable": false,
-      "recoverable": true
+      "remoteCommit": "870acc6040a50ca45a2b6bfddd3f9ec3d0387c47",
+      "divergence": "diverged",
+      "repositoryAvailable": true,
+      "recoverable": false
     },
     {
       "name": "Site-wedding",
@@ -135,5 +135,5 @@
     }
   ],
   "lastGitHubSync": "",
-  "githubStatus": "unknown"
+  "githubStatus": "available"
 }

@@ -262,6 +262,7 @@ export function createBrowserAutoController({ root, paths }) {
       }
       const currentTab = tabs.find(t => t.focused) || tabs.find(t => t.active) || null;
       const signature = JSON.stringify(recognizedTabs.map(t => [t.source, t.url, t.modules]).sort());
+      const cdpOnline = bridge.online && bridge.tabs.length ? false : cdp.online;
       snapshot = {
         ...snapshot,
         enabled: settings.enabled !== false,
@@ -269,7 +270,7 @@ export function createBrowserAutoController({ root, paths }) {
         pollMs: Number(settings.pollMs || 3000),
         cooldownMs: Number(settings.cooldownMs || 15000),
         bridgeOnline: bridge.online,
-        cdpOnline: cdp.online,
+        cdpOnline,
         tabs,
         recognizedTabs,
         activeModules,
