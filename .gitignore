@@ -3,3 +3,6 @@ backups/
 logs/
 temp/
 *.log
+.chatgpt-mcp-tmp/
+.chatgpt-mcp-home/
+dashboard/.chatgpt-mcp-home/

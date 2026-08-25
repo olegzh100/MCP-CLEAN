@@ -1,6 +1,10 @@
 $root = "F:\MCP-CLEAN\dashboard"
-$target = Join-Path $root "start.cmd"
+$target = Join-Path $root "MCP-CLEAN-Dashboard.exe"
 $wshell = New-Object -ComObject WScript.Shell
+
+if (-not (Test-Path -LiteralPath $target)) {
+    throw "Launcher executable not found: $target"
+}
 
 function New-McpShortcut([string]$path) {
     $directory = Split-Path $path -Parent
@@ -12,6 +16,7 @@ function New-McpShortcut([string]$path) {
     $shortcut.WorkingDirectory = $root
     $shortcut.WindowStyle = 1
     $shortcut.Description = "MCP-CLEAN Dashboard"
+    $shortcut.IconLocation = "$target,0"
     $shortcut.Save()
 }
 
@@ -47,7 +52,6 @@ if (-not $desktop) {
 }
 
 $startMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
-
 $desktopShortcut = Join-Path $desktop "MCP-CLEAN Dashboard.lnk"
 $startShortcut = Join-Path $startMenu "MCP-CLEAN Dashboard.lnk"
 
@@ -56,4 +60,5 @@ New-McpShortcut $startShortcut
 
 Write-Output "Desktop shortcut: $desktopShortcut"
 Write-Output "Start Menu shortcut: $startShortcut"
+Write-Output "Target: $target"
 Write-Output "MCP-CLEAN Dashboard shortcuts created successfully."
