@@ -245,7 +245,7 @@ export function createBrowserAutoController({ root, paths }) {
       const [bridge, cdp, crm, deploy, foreground] = await Promise.all([
         bridgeTabs(), cdpTabs(), readJson(paths.crm, {}), readJson(paths.deploy, { sites: [] }), foregroundEdgeTitle()
       ]);
-      let tabs = [...bridge.tabs, ...cdp.tabs];
+      let tabs = bridge.online && bridge.tabs.length ? [...bridge.tabs] : [...cdp.tabs];
       const seen = new Set();
       tabs = tabs.filter(tab => {
         const key = `${tab.source}|${tab.url}|${tab.title}`;

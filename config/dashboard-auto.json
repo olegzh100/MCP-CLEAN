@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "autoRunReadOnly": true,
-  "pollMs": 3000,
-  "cooldownMs": 15000
+  "autoRunReadOnly": false,
+  "pollMs": 6000,
+  "cooldownMs": 30000
 }
