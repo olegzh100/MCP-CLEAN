@@ -5,7 +5,9 @@
   "main": "server.mjs",
   "scripts": {
     "start": "node server.mjs",
-    "smoke": "node smoke-test.mjs"
+    "smoke": "node smoke-test.mjs && node dashboard/smoke-test.mjs",
+    "dashboard": "node dashboard/server.mjs",
+    "dashboard:smoke": "node dashboard/smoke-test.mjs"
   },
   "keywords": [],
   "author": "",
