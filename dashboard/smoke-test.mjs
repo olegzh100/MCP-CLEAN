@@ -1,6 +1,5 @@
 import http from "http";
 import { spawn } from "child_process";
-import fs from "fs/promises";
 import path from "path";
 
 const ROOT = "F:\\MCP-CLEAN";
@@ -18,16 +17,20 @@ function get(url) {
 }
 
 const child = spawn(process.execPath, [SERVER], { cwd: ROOT, stdio: "ignore", detached: true });
-await new Promise(r => setTimeout(r, 1500));
+child.unref();
+await new Promise(r => setTimeout(r, 1200));
 
-const status = await get(`${BASE}/api/status`);
-if (status.status !== 200) throw new Error("status failed");
-const modules = await get(`${BASE}/api/modules`);
-if (modules.status !== 200) throw new Error("modules failed");
-const projects = await get(`${BASE}/api/projects`);
-if (projects.status !== 200) throw new Error("projects failed");
+for (const endpoint of ["/api/status", "/api/modules", "/api/projects", "/api/context", "/api/full"]) {
+  const result = await get(`${BASE}${endpoint}`);
+  if (result.status !== 200) throw new Error(`${endpoint} failed: ${result.status}`);
+}
+
+const context = JSON.parse((await get(`${BASE}/api/context`)).body);
+if (context.enabled !== true) throw new Error("browser auto mode is not enabled");
+if (!Array.isArray(context.tabs)) throw new Error("live browser tabs are missing");
+if (!Array.isArray(context.activeModules)) throw new Error("active modules are missing");
+
 const index = await get(BASE);
-if (index.status !== 200 || !index.body.includes("MCP-CLEAN Control Center")) throw new Error("index failed");
+if (index.status !== 200 || !index.body.includes("Browser Auto Mode")) throw new Error("index failed");
 
-console.log("DASHBOARD SMOKE TEST OK");
-
+console.log(`DASHBOARD SMOKE TEST OK | tabs=${context.tabs.length} | modules=${context.activeModules.join(",") || "none"}`);

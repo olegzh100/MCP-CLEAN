@@ -4,6 +4,7 @@ import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { fileURLToPath } from "url";
+import { createBrowserAutoController } from "./browser-auto.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -51,6 +52,12 @@ const MODULE_HINTS = {
   project_manager: { label: "Project Manager", title: "Project Manager", group: "system" },
   recovery: { label: "Recovery", title: "Recovery Module", group: "system" }
 };
+
+const browserAuto = createBrowserAutoController({
+  root: ROOT,
+  paths: { crm: PATHS.crm, deploy: PATHS.deploy, githubRegistry: PATHS.githubRegistry }
+});
+await browserAuto.start();
 
 async function readJson(file, fallback) {
   try {
@@ -106,8 +113,9 @@ function moduleStatusFrom(module, registry, projects, system, logs) {
   const key = module.module.toLowerCase();
   const hint = MODULE_HINTS[key] || { label: module.module, title: module.module, group: "system" };
   const activity = system.currentTask || "";
+  const runtime = system.auto?.runtimes?.[key] || null;
   let state = "idle";
-  let lastCheckedAt = module.lastCheckedAt || "";
+  let lastCheckedAt = runtime?.finishedAt || runtime?.startedAt || module.lastCheckedAt || "";
   if (["browser", "elama", "direct"].includes(key)) {
     state = system[key]?.running ? "running" : "active";
     lastCheckedAt = system[key]?.checkedAt || lastCheckedAt;
@@ -125,6 +133,11 @@ function moduleStatusFrom(module, registry, projects, system, logs) {
   } else if (key === "recovery") {
     state = "active";
   }
+  if (runtime?.status === "running") state = "running";
+  else if (runtime?.status === "error") state = "error";
+  else if (runtime?.status === "warning") state = "warning";
+  else if (system.auto?.activeModules?.includes(key)) state = "active";
+  else if (["browser", "elama", "direct"].includes(key) && !system.auto?.activeModules?.includes(key)) state = key === "browser" && system.browser?.running ? "active" : "idle";
   return {
     id: module.module,
     name: hint.label,
@@ -153,12 +166,14 @@ async function buildState() {
   const elamaState = await readJson(PATHS.elamaState, { campaigns: [] });
   const directState = await readJson(PATHS.directState, { campaigns: [] });
   const process = await processStatus();
+  const autoContext = await browserAuto.refresh();
   const logs = await Promise.all(["actions", "projects", "recovery", "crm", "deploy", "elama", "direct", "tasks"].map(async name => [name, await readText(path.join(PATHS.logsDir, `${name}.log`))]));
   const logMap = Object.fromEntries(logs);
-  const currentTask = (logMap.tasks || "").split("\n").reverse().find(line => line.trim()) || "Панель готова";
+  const currentTask = autoContext.summary || (logMap.tasks || "").split("\n").reverse().find(line => line.trim()) || "Панель готова";
   const sys = {
     currentTask,
-    browser: { running: process.edgeRunning, checkedAt: new Date().toISOString(), tabs: browserState.tabs?.length || 0, profile: browserState.profile || browserConfig.profile || "Default" },
+    auto: autoContext,
+    browser: { running: process.edgeRunning, checkedAt: autoContext.updatedAt || new Date().toISOString(), tabs: autoContext.tabs?.length || 0, profile: browserState.profile || browserConfig.profile || "Default" },
     github: { available: githubRegistry.projects?.length > 0, checkedAt: recovery.lastGitHubSync || "", projects: githubRegistry.projects || [] },
     crm: { available: Boolean(crmConfig.apiUrl || crmConfig.healthUrl), checkedAt: crmConfig.lastCheckedAt || "" },
     deploy: { available: Array.isArray(deployConfig.sites) && deployConfig.sites.length > 0, checkedAt: new Date().toISOString(), sites: deployConfig.sites || [] },
@@ -189,7 +204,8 @@ async function buildState() {
     tasks: await readJson(PATHS.orchestratorTasks, { tasks: [] }),
     logs: logMap,
     recovery,
-    browser: { state: browserState, config: browserConfig },
+    browser: { state: { ...browserState, tabs: autoContext.tabs || [] }, config: browserConfig, live: autoContext },
+    autoContext,
     crm: crmConfig,
     deploy: deployConfig,
     advertising: { elamaState, directState }
@@ -213,17 +229,48 @@ function serveFile(res, filePath, contentType) {
 
 async function handleApi(req, res, url) {
   const state = await buildState();
+  if (req.method === "GET" && url.pathname === "/api/full") return sendJson(res, state);
   if (req.method === "GET" && url.pathname === "/api/status") return sendJson(res, state.status);
   if (req.method === "GET" && url.pathname === "/api/modules") return sendJson(res, { modules: state.modules });
   if (req.method === "GET" && url.pathname === "/api/projects") return sendJson(res, { projects: state.projects });
   if (req.method === "GET" && url.pathname === "/api/github") return sendJson(res, { repositories: state.github });
   if (req.method === "GET" && url.pathname === "/api/tasks") return sendJson(res, { tasks: state.tasks.tasks || [], logs: state.logs });
   if (req.method === "GET" && url.pathname === "/api/logs") return sendJson(res, { logs: state.logs });
-  if (["POST"].includes(req.method) && ["/api/task/plan", "/api/task/run", "/api/module/run", "/api/checkpoint"].includes(url.pathname)) {
+  if (req.method === "GET" && url.pathname === "/api/context") return sendJson(res, state.autoContext || browserAuto.getSnapshot());
+  if (req.method === "POST" && ["/api/task/plan", "/api/task/run", "/api/module/run", "/api/checkpoint", "/api/auto/refresh", "/api/auto/toggle"].includes(url.pathname)) {
     let body = "";
     for await (const chunk of req) body += chunk;
     const payload = body ? JSON.parse(body) : {};
-    return sendJson(res, { ok: true, endpoint: url.pathname, received: payload, note: "Dashboard API is connected to local registry and state only." });
+    if (url.pathname === "/api/auto/refresh") return sendJson(res, await browserAuto.refresh({ force: true }));
+    if (url.pathname === "/api/auto/toggle") return sendJson(res, await browserAuto.setEnabled(payload.enabled !== false));
+    if (url.pathname === "/api/module/run") {
+      const moduleId = String(payload.module || "").trim().toLowerCase();
+      if (!moduleId) return sendJson(res, { ok: false, error: "module is required" }, 400);
+      const live = await browserAuto.refresh();
+      const tab = (live.recognizedTabs || []).find(t => (t.modules || []).includes(moduleId)) || live.currentTab || null;
+      return sendJson(res, { ok: true, runtime: await browserAuto.runModule(moduleId, "manual-dashboard", tab, true) });
+    }
+    if (url.pathname === "/api/task/plan") {
+      const task = String(payload.task || "").toLowerCase();
+      const live = await browserAuto.refresh();
+      const modules = new Set(live.activeModules || []);
+      if (task.includes("лид") || task.includes("lead")) ["direct","elama","crm"].forEach(x => modules.add(x));
+      if (task.includes("сайт") || task.includes("deploy") || task.includes("публикац")) modules.add("deploy");
+      if (task.includes("git") || task.includes("github")) modules.add("github");
+      if (task.includes("брауз") || task.includes("browser")) modules.add("browser");
+      return sendJson(res, { ok: true, task: payload.task || "", modules: [...modules], source: "browser-context+task" });
+    }
+    if (url.pathname === "/api/task/run") {
+      const modules = Array.isArray(payload.modules) ? payload.modules : [];
+      const live = await browserAuto.refresh();
+      const results = [];
+      for (const moduleId of modules) {
+        const tab = (live.recognizedTabs || []).find(t => (t.modules || []).includes(moduleId)) || live.currentTab || null;
+        results.push(await browserAuto.runModule(String(moduleId), "task-dashboard", tab, true));
+      }
+      return sendJson(res, { ok: true, results });
+    }
+    return sendJson(res, { ok: true, endpoint: url.pathname, received: payload, note: "No external write was executed." });
   }
   return false;
 }

@@ -19,15 +19,15 @@
     <nav class="tabs" id="tabs"></nav>
     <section class="hero">
       <div class="hero-card">
-        <h2>Mixed Mode</h2>
-        <p>Система предлагает модули по Task Orchestrator и Module Registry, а вы корректируете выбор перед запуском.</p>
+        <h2>Browser Auto Mode</h2>
+        <p>Панель сама отслеживает открытые вкладки Edge, определяет контекст и запускает нужные безопасные read-only модули. Ручной выбор нужен только при необходимости.</p>
         <div class="hero-actions">
-          <button id="refreshBtn">Обновить</button>
-          <button class="ghost" id="openMixedBtn">Mixed</button>
+          <button id="refreshBtn">Проверить сейчас</button>
+          <button class="ghost" id="openMixedBtn">Авто</button>
         </div>
       </div>
       <div class="hero-card accent">
-        <h2>Current Task</h2>
+        <h2>Current Context</h2>
         <p id="currentTask">Загрузка...</p>
       </div>
     </section>
@@ -36,4 +36,3 @@
   <script src="./app.js"></script>
 </body>
 </html>
-
