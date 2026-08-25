@@ -1,17 +1,17 @@
 {
-  "lastCheckedAt": "2026-08-25T15:18:30.244Z",
+  "lastCheckedAt": "2026-08-25T15:26:04.266Z",
   "projects": [
     {
       "name": "MCP-CLEAN",
       "path": "F:\\MCP-CLEAN",
       "exists": true,
       "branch": "main",
-      "localCommit": "97974c1",
+      "localCommit": "143dad9",
       "remote": "https://github.com/olegzh100/MCP-CLEAN.git",
-      "remoteCommit": "2710cc0e07a36b01318cabd1c5c62aa79e2d9129",
-      "divergence": "diverged",
+      "remoteCommit": "143dad94dd07e32b043579000a2eb163e5e6e639",
+      "divergence": "synced",
       "repositoryAvailable": true,
-      "recoverable": false
+      "recoverable": true
     },
     {
       "name": "CRM",
@@ -56,10 +56,10 @@
       "branch": "preza-full-album-galleries",
       "localCommit": "6f8e583",
       "remote": "https://github.com/olegzh100/MBA-ALBUMS.git",
-      "remoteCommit": "687b25aaedeafdef5e50e1202539beb7d8a8e24b",
-      "divergence": "diverged",
-      "repositoryAvailable": true,
-      "recoverable": false
+      "remoteCommit": null,
+      "divergence": "unknown",
+      "repositoryAvailable": false,
+      "recoverable": true
     },
     {
       "name": "MBA-ALBUMS-PROD",
