@@ -1,0 +1,61 @@
+{
+  "created_at": "2026-09-18T07:02:39.310758+00:00",
+  "domain": "trading",
+  "error": null,
+  "finished_at": "2026-09-18T07:02:39.333202+00:00",
+  "job_id": "3a704767-f830-4092-9d48-d61c21dc4ac9",
+  "kind": "paper-health",
+  "request_id": "7f6f7f10-8af1-4c56-b899-98ea5fe1bd51",
+  "result": {
+    "checks": {
+      "health_http": 200,
+      "health_latency_ms": 6.58,
+      "live_trading_disabled": true,
+      "summary_http": 200,
+      "summary_latency_ms": 10.89
+    },
+    "domain": "trading",
+    "health": {
+      "live_trading": "disabled",
+      "service": "paper-read-api",
+      "status": "ok"
+    },
+    "job_id": "3a704767-f830-4092-9d48-d61c21dc4ac9",
+    "kind": "paper-health",
+    "ok": true,
+    "summary": {
+      "counts": {
+        "fills": 1,
+        "orders": 1,
+        "positions": 1,
+        "risk_decisions": 275,
+        "signals": 275,
+        "system_events": 0
+      },
+      "endurance": {
+        "elapsed_days": 0.649,
+        "required_days": 30,
+        "required_orders": 50,
+        "required_sessions": 20,
+        "status": "WAITING_FOR_ELAPSED_PAPER_EVIDENCE"
+      },
+      "generated_at_utc": "2026-09-18T07:02:39.331244+00:00",
+      "pnl": {
+        "commission": 0.0,
+        "realized": 0.0,
+        "unrealized": 0.0
+      },
+      "risk_rejections": 274,
+      "run": {
+        "code_commit": "historical-e2e-canonical",
+        "data_version": "tinvest-180d-15m",
+        "environment": "PAPER",
+        "run_id": "42068d7c-c07c-4345-9b94-03285c1e491f",
+        "started_at_utc": "2026-09-17T15:28:28.514140+00:00"
+      }
+    }
+  },
+  "schema_version": 1,
+  "started_at": "2026-09-18T07:02:39.312487+00:00",
+  "status": "SUCCEEDED"
+}
