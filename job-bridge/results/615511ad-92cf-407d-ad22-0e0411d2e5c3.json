@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "request_id": "615511ad-92cf-407d-ad22-0e0411d2e5c3",
+  "job_id": "4d951c1f-ffa5-4630-9b40-f3f74bdc9624",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-18T14:45:34.018638+00:00",
+  "started_at": "2026-09-18T14:45:34.021275+00:00",
+  "finished_at": "2026-09-18T14:45:37.040665+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "report_path": "/paper/backtests/4d951c1f-ffa5-4630-9b40-f3f74bdc9624"
+}
