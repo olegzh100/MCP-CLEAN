@@ -1,0 +1,13 @@
+{
+  "created_at": "2026-09-18T09:40:28.722451+00:00",
+  "domain": "trading",
+  "error": "TypeError: _simulate_inverse_gap() takes 2 positional arguments but 5 were given",
+  "finished_at": "2026-09-18T09:52:31.835847+00:00",
+  "job_id": "30a2da3b-e357-4a77-857f-0155e3f71d2a",
+  "kind": "backtest",
+  "request_id": "1f3df54f-8cdd-4a5c-9e31-56c2ed10e0bc",
+  "result": null,
+  "schema_version": 1,
+  "started_at": "2026-09-18T09:40:28.723528+00:00",
+  "status": "FAILED"
+}
