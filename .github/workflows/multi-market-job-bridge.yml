@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: multi-market-job-bridge-results
+  group: multi-market-job-bridge-results-v2
   cancel-in-progress: false
 
 jobs:
@@ -20,18 +20,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 2
 
-      - name: Collect terminal Job API results
+      - name: Collect terminal Job API results for requests from this push
         shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           mkdir -p job-bridge/results
 
-          shopt -s nullglob
-          requests=(job-bridge/requests/*.json)
+          mapfile -t changed < <(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- 'job-bridge/requests/*.json' || true)
+          requests=()
+          for path in "${changed[@]}"; do
+            if [ -f "$path" ]; then
+              requests+=("$path")
+            fi
+          done
+
           if [ ${#requests[@]} -eq 0 ]; then
-            echo "No requests found"
+            echo "No new request files in this push"
             exit 0
           fi
 
@@ -40,7 +49,7 @@ jobs:
             expected_file="job-bridge/results/${request_id}.json"
 
             if [ -f "$expected_file" ]; then
-              echo "Result already present for $request_id; removing stale request"
+              echo "Receipt already present for $request_id; removing request"
               rm -f "$req"
               continue
             fi
