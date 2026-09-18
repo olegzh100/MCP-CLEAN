@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "5b28b151-07f5-4ad4-99b9-b4e0a8e71fd6",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_inverse_excursion"
+  }
+}
