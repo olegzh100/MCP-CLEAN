@@ -68,7 +68,39 @@ jobs:
                 status="$(jq -r '.status // empty' "$tmp")"
                 case "$status" in
                   SUCCEEDED|FAILED|REJECTED|BRIDGE_TIMEOUT)
-                    jq '{
+                    report_verified_json="null"
+                    job_id="$(jq -r '.job_id // empty' "$tmp")"
+
+                    if [ "$status" = "SUCCEEDED" ]; then
+                      if [ -z "$job_id" ]; then
+                        echo "SUCCEEDED result has no job_id for $request_id" >&2
+                        exit 1
+                      fi
+
+                      report_url="https://178.212.13.248/paper/backtests/${job_id}"
+                      report_tmp="$(mktemp)"
+                      report_ok=""
+                      for report_attempt in $(seq 1 20); do
+                        if curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$report_url" -o "$report_tmp"; then
+                          returned_job_id="$(jq -r '.job_id // empty' "$report_tmp" 2>/dev/null || true)"
+                          if [ "$returned_job_id" = "$job_id" ] && jq -e '.report | type == "object"' "$report_tmp" >/dev/null 2>&1; then
+                            report_ok="yes"
+                            report_verified_json="true"
+                            echo "Verified published report for job_id=$job_id"
+                            break
+                          fi
+                        fi
+                        sleep 3
+                      done
+                      rm -f "$report_tmp"
+
+                      if [ -z "$report_ok" ]; then
+                        echo "Terminal result succeeded but published report is not readable for job_id=$job_id" >&2
+                        exit 1
+                      fi
+                    fi
+
+                    jq --argjson report_verified "$report_verified_json" '{
                       schema_version: (.schema_version // 1),
                       request_id,
                       job_id,
@@ -79,7 +111,8 @@ jobs:
                       finished_at,
                       domain,
                       kind,
-                      report_path: (if .job_id then ("/paper/backtests/" + .job_id) else null end)
+                      report_path: (if .job_id then ("/paper/backtests/" + .job_id) else null end),
+                      report_verified: $report_verified
                     }' "$tmp" > "$expected_file"
                     terminal="yes"
                     echo "Collected $request_id status=$status"
