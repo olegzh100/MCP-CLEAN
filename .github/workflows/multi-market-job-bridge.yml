@@ -16,7 +16,7 @@ concurrency:
 jobs:
   collect-results:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,7 +40,8 @@ jobs:
             expected_file="job-bridge/results/${request_id}.json"
 
             if [ -f "$expected_file" ]; then
-              echo "Result already present for $request_id"
+              echo "Result already present for $request_id; removing stale request"
+              rm -f "$req"
               continue
             fi
 
@@ -53,14 +54,27 @@ jobs:
             tmp="$(mktemp)"
             terminal=""
 
-            for attempt in $(seq 1 240); do
+            for attempt in $(seq 1 360); do
               if curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$url" -o "$tmp"; then
                 status="$(jq -r '.status // empty' "$tmp")"
                 case "$status" in
                   SUCCEEDED|FAILED|REJECTED|BRIDGE_TIMEOUT)
-                    mv "$tmp" "$expected_file"
+                    jq '{
+                      schema_version: (.schema_version // 1),
+                      request_id,
+                      job_id,
+                      status,
+                      error,
+                      created_at,
+                      started_at,
+                      finished_at,
+                      domain,
+                      kind,
+                      report_path: (if .job_id then ("/paper/backtests/" + .job_id) else null end)
+                    }' "$tmp" > "$expected_file"
                     terminal="yes"
                     echo "Collected $request_id status=$status"
+                    rm -f "$req"
                     break
                     ;;
                 esac
@@ -75,16 +89,16 @@ jobs:
             fi
           done
 
-      - name: Commit collected results
+      - name: Commit collected receipts and clean requests
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- job-bridge/results && [ -z "$(git status --porcelain -- job-bridge/results)" ]; then
-            echo "No new results"
+          if git diff --quiet -- job-bridge/results job-bridge/requests && [ -z "$(git status --porcelain -- job-bridge/results job-bridge/requests)" ]; then
+            echo "No Job Bridge changes"
             exit 0
           fi
           git config user.name "multi-market-job-bridge"
           git config user.email "job-bridge@users.noreply.github.com"
-          git add job-bridge/results
-          git commit -m "Publish multi-market Job API bridge results"
+          git add -A job-bridge/results job-bridge/requests
+          git commit -m "Publish Job API receipt and clean processed request"
           git push origin HEAD:main
