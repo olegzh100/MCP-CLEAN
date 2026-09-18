@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "request_id": "2d2e7f30-b9c6-4dfc-a619-980814421b13",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_inverse_gap_sweep",
+    "days": 180
+  }
+}
