@@ -1,0 +1,6 @@
+{
+  "error": "ValueError: unsupported backtest runner",
+  "request_id": "a3f4b5c0-6470-49cd-b127-5d58f531f9aa",
+  "schema_version": 1,
+  "status": "REJECTED"
+}
