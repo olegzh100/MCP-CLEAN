@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "7c145381-f831-4ed7-bb5b-52dfb6f57d45",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_inverse_frozen_walkforward"
+  }
+}
