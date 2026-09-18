@@ -1,0 +1,90 @@
+name: Multi-Market Job Bridge Results
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "job-bridge/requests/*.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: multi-market-job-bridge-results
+  cancel-in-progress: false
+
+jobs:
+  collect-results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Collect terminal Job API results
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p job-bridge/results
+
+          shopt -s nullglob
+          requests=(job-bridge/requests/*.json)
+          if [ ${#requests[@]} -eq 0 ]; then
+            echo "No requests found"
+            exit 0
+          fi
+
+          for req in "${requests[@]}"; do
+            request_id="$(jq -r '.request_id' "$req")"
+            expected_file="job-bridge/results/${request_id}.json"
+
+            if [ -f "$expected_file" ]; then
+              echo "Result already present for $request_id"
+              continue
+            fi
+
+            if ! [[ "$request_id" =~ ^[a-f0-9-]{36}$ ]]; then
+              echo "Invalid request id: $request_id" >&2
+              exit 1
+            fi
+
+            url="https://178.212.13.248/job-bridge/results/${request_id}.json"
+            tmp="$(mktemp)"
+            terminal=""
+
+            for attempt in $(seq 1 240); do
+              if curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$url" -o "$tmp"; then
+                status="$(jq -r '.status // empty' "$tmp")"
+                case "$status" in
+                  SUCCEEDED|FAILED|REJECTED|BRIDGE_TIMEOUT)
+                    mv "$tmp" "$expected_file"
+                    terminal="yes"
+                    echo "Collected $request_id status=$status"
+                    break
+                    ;;
+                esac
+              fi
+              sleep 3
+            done
+
+            rm -f "$tmp"
+            if [ -z "$terminal" ]; then
+              echo "Timed out waiting for terminal result: $request_id" >&2
+              exit 1
+            fi
+          done
+
+      - name: Commit collected results
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- job-bridge/results && [ -z "$(git status --porcelain -- job-bridge/results)" ]; then
+            echo "No new results"
+            exit 0
+          fi
+          git config user.name "multi-market-job-bridge"
+          git config user.email "job-bridge@users.noreply.github.com"
+          git add job-bridge/results
+          git commit -m "Publish multi-market Job API bridge results"
+          git push origin HEAD:main
