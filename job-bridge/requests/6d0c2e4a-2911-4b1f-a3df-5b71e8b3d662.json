@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "6d0c2e4a-2911-4b1f-a3df-5b71e8b3d662",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_inverse_volume_bins"
+  }
+}
