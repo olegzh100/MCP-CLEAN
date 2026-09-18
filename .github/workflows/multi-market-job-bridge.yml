@@ -79,7 +79,7 @@ jobs:
                       finished_at,
                       domain,
                       kind,
-                      report_path: (if .job_id then ("/paper/backtests/" + .job_id) else null end)
+                      report_path: (if .job_id then ("/trading-api/paper/backtests/" + .job_id) else null end)
                     }' "$tmp" > "$expected_file"
                     terminal="yes"
                     echo "Collected $request_id status=$status"
