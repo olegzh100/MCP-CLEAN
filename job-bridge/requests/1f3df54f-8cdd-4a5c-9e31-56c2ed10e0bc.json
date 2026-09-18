@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "1f3df54f-8cdd-4a5c-9e31-56c2ed10e0bc",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_inverse_take_profit_sweep"
+  }
+}
