@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "19091926-0000-4000-8000-000000000001",
+  "domain": "trading",
+  "kind": "reports-new",
+  "parameters": {
+    "limit": 20
+  }
+}
