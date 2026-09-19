@@ -8,6 +8,9 @@ Only the following request shapes are accepted by the server worker:
   - research runner: `{"runner":"strategy_research","experiment":{...}}`
   - infrastructure smoke runner: `{"runner":"nautilus_ema_spike"}`
 - `trading/paper-health` with no parameters
+- `trading/reports-new` with optional `{"limit":1..200}`
+- `trading/report-get` with exactly `{"report_id":"..."}`
+- `trading/report-processed` with exactly `{"report_id":"..."}`
 - `crm/diagnostics` with no parameters
 
 Research hypotheses are sent as JSON data in `parameters.experiment`. The experiment schema is versioned (`schema_version: 1`) and is validated again by the Secure Job API. The bridge does not accept arbitrary Python modules, shell commands, broker controls, or LIVE trading switches.
@@ -22,4 +25,6 @@ Successful research jobs automatically publish a report into the PAPER read serv
 
 No manual download is required before reading a completed report.
 
-No API tokens, broker credentials, reports or private trading data are stored in this repository.
+API tokens and broker credentials are never stored in this repository. For non-backtest read jobs, the terminal receipt may temporarily contain the sanitized Job API `result` needed by ChatGPT, including requested report data. Request parameters remain strictly allow-listed and LIVE controls are unavailable.
+
+For report pickup, the normal sequence is `reports-new` → `report-get` → `report-processed`. Backtest-only published-report verification is not applied to these read jobs.

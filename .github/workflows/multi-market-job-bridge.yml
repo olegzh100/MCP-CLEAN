@@ -70,10 +70,12 @@ jobs:
                   SUCCEEDED|FAILED|REJECTED|BRIDGE_TIMEOUT)
                     report_verified_json="null"
                     job_id="$(jq -r '.job_id // empty' "$tmp")"
+                    domain="$(jq -r '.domain // empty' "$tmp")"
+                    kind="$(jq -r '.kind // empty' "$tmp")"
 
-                    if [ "$status" = "SUCCEEDED" ]; then
+                    if [ "$status" = "SUCCEEDED" ] && [ "$domain" = "trading" ] && [ "$kind" = "backtest" ]; then
                       if [ -z "$job_id" ]; then
-                        echo "SUCCEEDED result has no job_id for $request_id" >&2
+                        echo "SUCCEEDED backtest result has no job_id for $request_id" >&2
                         exit 1
                       fi
 
@@ -95,7 +97,7 @@ jobs:
                       rm -f "$report_tmp"
 
                       if [ -z "$report_ok" ]; then
-                        echo "Terminal result succeeded but published report is not readable for job_id=$job_id" >&2
+                        echo "Terminal backtest succeeded but published report is not readable for job_id=$job_id" >&2
                         exit 1
                       fi
                     fi
@@ -111,7 +113,8 @@ jobs:
                       finished_at,
                       domain,
                       kind,
-                      report_path: (if .job_id then ("/trading-api/paper/backtests/" + .job_id) else null end),
+                      result: (if (.domain == "trading" and .kind == "backtest") then null else .result end),
+                      report_path: (if (.domain == "trading" and .kind == "backtest" and .job_id) then ("/trading-api/paper/backtests/" + .job_id) else null end),
                       report_verified: $report_verified
                     }' "$tmp" > "$expected_file"
                     terminal="yes"
