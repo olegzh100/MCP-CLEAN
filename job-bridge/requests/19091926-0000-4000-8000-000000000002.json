@@ -1,9 +1,0 @@
-{
-  "schema_version": 1,
-  "request_id": "19091926-0000-4000-8000-000000000002",
-  "domain": "trading",
-  "kind": "report-get",
-  "parameters": {
-    "report_id": "bridge-report-acceptance-20260919"
-  }
-}
