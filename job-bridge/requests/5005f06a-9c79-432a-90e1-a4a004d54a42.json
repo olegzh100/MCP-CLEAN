@@ -1,9 +1,0 @@
-{
-  "schema_version": 1,
-  "request_id": "5005f06a-9c79-432a-90e1-a4a004d54a42",
-  "domain": "trading",
-  "kind": "report-processed",
-  "parameters": {
-    "report_id": "chatgpt-job-bridge-acceptance-20260920"
-  }
-}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "request_id": "5005f06a-9c79-432a-90e1-a4a004d54a42",
+  "job_id": "2f2128f8-6e11-4a4b-8412-15c53e809044",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-20T07:26:50.212667+00:00",
+  "started_at": "2026-09-20T07:26:50.213849+00:00",
+  "finished_at": "2026-09-20T07:26:50.220478+00:00",
+  "domain": "trading",
+  "kind": "report-processed",
+  "result": {
+    "domain": "trading",
+    "job_id": "2f2128f8-6e11-4a4b-8412-15c53e809044",
+    "kind": "report-processed",
+    "latency_ms": 5.84,
+    "ok": true,
+    "report_id": "chatgpt-job-bridge-acceptance-20260920",
+    "result": {
+      "chatgpt_processed_at": "2026-09-20T07:26:50.217872+00:00",
+      "chatgpt_status": "PROCESSED",
+      "job_id": "chatgpt-job-bridge-acceptance-20260920",
+      "retained_for_user_download": true,
+      "status": "READY_TO_DOWNLOAD"
+    }
+  },
+  "report_path": null,
+  "report_verified": null
+}
