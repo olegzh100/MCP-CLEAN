@@ -1,9 +1,0 @@
-{
-  "schema_version": 1,
-  "request_id": "8b4c5d21-0a71-4d7a-a661-03f9c224f81e",
-  "domain": "trading",
-  "kind": "report-get",
-  "parameters": {
-    "report_id": "0eb639db-864c-4b3b-b916-089dab253252"
-  }
-}
