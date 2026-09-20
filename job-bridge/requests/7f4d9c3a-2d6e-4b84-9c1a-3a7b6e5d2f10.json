@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "7f4d9c3a-2d6e-4b84-9c1a-3a7b6e5d2f10",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "nautilus_ema_spike"
+  }
+}
