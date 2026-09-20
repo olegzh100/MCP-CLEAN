@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "request_id": "ce57e3d4-a2b7-4381-b5c2-d1c237bbee42",
+  "job_id": "d9312f77-db59-4ef3-b7f6-67e6fb1e3ccc",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-20T07:26:26.444793+00:00",
+  "started_at": "2026-09-20T07:26:26.448430+00:00",
+  "finished_at": "2026-09-20T07:26:26.455882+00:00",
+  "domain": "trading",
+  "kind": "report-get",
+  "result": {
+    "domain": "trading",
+    "job_id": "d9312f77-db59-4ef3-b7f6-67e6fb1e3ccc",
+    "kind": "report-get",
+    "latency_ms": 5.46,
+    "ok": true,
+    "report": {
+      "chatgpt_processed_at": null,
+      "chatgpt_status": "NEW",
+      "downloaded_at": null,
+      "job_id": "chatgpt-job-bridge-acceptance-20260920",
+      "received_at": "2026-09-20T07:22:37.056182+00:00",
+      "report": {
+        "runner": "acceptance",
+        "strategy": "JOB_BRIDGE_REPORT_ACCEPTANCE",
+        "summary": {
+          "net_realized_pnl": "0",
+          "trades": 2
+        }
+      },
+      "status": "READY_TO_DOWNLOAD"
+    },
+    "report_id": "chatgpt-job-bridge-acceptance-20260920"
+  },
+  "report_path": null,
+  "report_verified": null
+}
