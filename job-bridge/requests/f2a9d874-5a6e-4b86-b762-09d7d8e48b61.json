@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "request_id": "f2a9d874-5a6e-4b86-b762-09d7d8e48b61",
+  "domain": "trading",
+  "kind": "report-consume",
+  "parameters": {
+    "report_id": "fast-consume-acceptance-20260920"
+  }
+}
