@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "request_id": "1c58de0a-7e41-47a8-b73d-42e2f7b56ad4",
+  "job_id": "94e9ceb0-a524-45fe-a952-1fea0db4ba58",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-20T11:55:33.601155+00:00",
+  "started_at": "2026-09-20T11:55:33.602735+00:00",
+  "finished_at": "2026-09-20T11:55:33.622343+00:00",
+  "domain": "trading",
+  "kind": "reports-new",
+  "result": {
+    "count": 1,
+    "domain": "trading",
+    "job_id": "94e9ceb0-a524-45fe-a952-1fea0db4ba58",
+    "kind": "reports-new",
+    "latency_ms": 18.85,
+    "ok": true,
+    "reports": [
+      {
+        "bars": 2743,
+        "chatgpt_processed_at": null,
+        "chatgpt_status": "NEW",
+        "downloaded_at": null,
+        "job_id": "aa32a1e4-1f39-4223-aa43-01ea5f3e556d",
+        "max_drawdown": 11.691009999999999,
+        "pnl": "-11.691010",
+        "profit_factor": 0.5482149074654805,
+        "received_at": "2026-09-18T20:32:48.231542+00:00",
+        "status": "READY_TO_DOWNLOAD",
+        "strategy": "FOREX_EMA_TREND_V001",
+        "trades": 18,
+        "win_rate": 0.5555555555555556
+      }
+    ]
+  },
+  "report_path": null,
+  "report_verified": null
+}
