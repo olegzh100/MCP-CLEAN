@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "request_id": "d0e20032-8a2e-4d1b-9c32-000000000032",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "tinvest_historical",
+    "days": 180,
+    "min_signal_gap_bars": 32
+  }
+}
