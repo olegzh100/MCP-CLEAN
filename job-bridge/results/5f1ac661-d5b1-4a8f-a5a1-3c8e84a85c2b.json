@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "request_id": "5f1ac661-d5b1-4a8f-a5a1-3c8e84a85c2b",
+  "job_id": "dfb91f4d-41d3-4538-897f-f537d410ccb5",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-21T07:51:51.584566+00:00",
+  "started_at": "2026-09-21T07:51:51.585926+00:00",
+  "finished_at": "2026-09-21T07:51:51.648559+00:00",
+  "domain": "crm",
+  "kind": "session-readiness",
+  "result": {
+    "checks": {
+      "auth_user": {
+        "login": "oleg",
+        "present": true,
+        "source": "CRM_AUTH_USERS_JSON"
+      },
+      "backend_service": {
+        "active": true,
+        "name": "crm-backend.service",
+        "status": "active"
+      },
+      "credential_backup": {
+        "count": 1,
+        "directory": "/var/lib/crm-backend/credential-backups",
+        "exists": true,
+        "latest_file": "20260920-231121-auth-users.json"
+      },
+      "health": {
+        "endpoint": "http://127.0.0.1:8787/health",
+        "http": 200,
+        "latency_ms": 50.4,
+        "status": "ok"
+      }
+    },
+    "domain": "crm",
+    "job_id": "dfb91f4d-41d3-4538-897f-f537d410ccb5",
+    "kind": "session-readiness",
+    "ok": true
+  },
+  "report_path": null,
+  "report_verified": null
+}
