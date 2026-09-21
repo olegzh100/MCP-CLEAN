@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "request_id": "7e000008-2026-4a08-9008-000000000008",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "strategy_research",
+    "experiment": {
+      "schema_version": 1,
+      "name": "ema20_60_original_gap_8_180d_pct_cycle_4bps",
+      "strategy": {
+        "id": "FOREX_EMA_TREND_V001",
+        "signal_direction": "ORIGINAL"
+      },
+      "data": {
+        "source": "TINVEST",
+        "from_utc": "2026-03-22T07:30:00Z",
+        "to_utc": "2026-09-18T07:15:00Z",
+        "warmup_days": 7
+      },
+      "filters": {
+        "min_signal_gap_bars": 8
+      },
+      "exit": {
+        "mode": "REVERSE_SIGNAL"
+      },
+      "execution": {
+        "commission_rate": "0.0002",
+        "quantity": "1"
+      },
+      "output": {
+        "include_trades": true
+      }
+    }
+  }
+}
