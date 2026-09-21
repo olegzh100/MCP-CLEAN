@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "request_id": "5f1ac661-d5b1-4a8f-a5a1-3c8e84a85c2b",
+  "domain": "crm",
+  "kind": "session-readiness",
+  "parameters": {}
+}
