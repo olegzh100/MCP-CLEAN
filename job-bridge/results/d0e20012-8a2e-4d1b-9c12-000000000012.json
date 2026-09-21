@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "d0e20012-8a2e-4d1b-9c12-000000000012",
+  "job_id": null,
+  "status": "REJECTED",
+  "error": "ValueError: unsupported backtest runner; use strategy_research",
+  "created_at": null,
+  "started_at": null,
+  "finished_at": null,
+  "domain": null,
+  "kind": null,
+  "result": null,
+  "report_path": null,
+  "report_verified": null
+}
