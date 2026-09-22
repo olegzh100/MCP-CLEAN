@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "3c839a3e-76e1-4df5-a025-5d43ceeb9b19",
+  "job_id": "b19cbc08-803f-4388-9271-5b12001409bf",
+  "status": "FAILED",
+  "error": "OSError: [Errno 30] Read-only file system: '/var/lib/multi-market/dukascopy-candle-cache'",
+  "created_at": "2026-09-22T16:45:03.800272+00:00",
+  "started_at": "2026-09-22T16:45:03.803124+00:00",
+  "finished_at": "2026-09-22T16:48:33.599320+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/b19cbc08-803f-4388-9271-5b12001409bf",
+  "report_verified": null
+}
