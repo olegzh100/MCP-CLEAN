@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "request_id": "52b00091-2026-4b20-8c91-000000000091",
+  "job_id": "7e4e7f76-acd3-4da0-9f3a-4472416664da",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-22T09:52:22.319268+00:00",
+  "started_at": "2026-09-22T09:52:22.320601+00:00",
+  "finished_at": "2026-09-22T09:52:22.327934+00:00",
+  "domain": "trading",
+  "kind": "report-consume",
+  "result": {
+    "domain": "trading",
+    "job_id": "7e4e7f76-acd3-4da0-9f3a-4472416664da",
+    "kind": "report-consume",
+    "latency_ms": 6.51,
+    "ok": true,
+    "report_id": "11c5923d-d832-4731-abcc-7d7eef011dd8",
+    "result": {
+      "chatgpt_processed_at": "2026-09-22T09:52:22.325099+00:00",
+      "chatgpt_status": "PROCESSED",
+      "job_id": "11c5923d-d832-4731-abcc-7d7eef011dd8",
+      "lifecycle": {
+        "chatgpt_processed_at": "2026-09-22T09:52:22.325099+00:00",
+        "chatgpt_status": "PROCESSED",
+        "job_id": "11c5923d-d832-4731-abcc-7d7eef011dd8",
+        "retained_for_user_download": true,
+        "status": "READY_TO_DOWNLOAD"
+      },
+      "report": {
+        "chatgpt_processed_at": "2026-09-22T09:52:22.325099+00:00",
+        "chatgpt_status": "PROCESSED",
+        "downloaded_at": null,
+        "job_id": "11c5923d-d832-4731-abcc-7d7eef011dd8",
+        "received_at": "2026-09-22T09:52:03.384607+00:00",
+        "report": {
+          "bars": 13928,
+          "data_source": "TINVEST_REAL_HISTORICAL_CANDLES",
+          "domain": "trading",
+          "duration_ms": 177035.36,
+          "evaluation_period": {
+            "from_utc": "2026-03-22T07:30:00+00:00",
+            "to_utc": "2026-09-18T07:15:00+00:00"
+          },
+          "experiment": {
+            "data": {
+              "from_utc": "2026-03-22T07:30:00Z",
+              "source": "TINVEST",
+              "to_utc": "2026-09-18T07:15:00Z",
+              "warmup_days": 7
+            },
+            "execution": {
+              "commission_rate": "0.0002",
+              "quantity": "1"
+            },
+            "exit": {
+              "mode": "TAKE_PROFIT_STOP_LOSS_OR_REVERSE",
+              "stop_loss_points": "9.0",
+              "take_profit_points": "6.25"
+            },
+            "filters": {
+              "min_signal_gap_bars": 16
+            },
+            "name": "ema20_60_inverted_gap16_tp6.25_sl9.0_180d_4bps",
+            "output": {
+              "include_trades": false
+            },
+            "schema_version": 1,
+            "strategy": {
+              "id": "FOREX_EMA_TREND_V001",
+              "signal_direction": "INVERTED"
+            }
+          },
+          "experiment_fingerprint": "4aa93659781f351669c09359358a700836f5d058ecd8ad2248caf1ebd4436b48",
+          "experiment_name": "ema20_60_inverted_gap16_tp6.25_sl9.0_180d_4bps",
+          "instrument_id": "BBG004730N88",
+          "job_id": "11c5923d-d832-4731-abcc-7d7eef011dd8",
+          "kind": "backtest",
+          "live_trading": "disabled",
+          "raw_signals": 275,
+          "report_type": "STRATEGY_RESEARCH",
+          "run_id": "cbcc54ca-2777-44dc-b572-3da3021d1ed7",
+          "runner": "strategy_research",
+          "schema_version": 1,
+          "selected_signals": 184,
+          "summary": {
+            "average_loss": -3.1625308095238096,
+            "average_win": 1.4005332777777777,
+            "average_win_loss": 0.44285205809225286,
+            "commission": "18.228700",
+            "expectancy": 0.12287533333333332,
+            "gross_realized_pnl": "36.66",
+            "losses": 42,
+            "max_drawdown": 53.336944,
+            "net_realized_pnl": "18.431300",
+            "performance_metrics_basis": "closed_trade_net_pnl_after_trade_commission",
+            "profit_factor": 1.1387624350943648,
+            "sharpe": 0.5030748029383209,
+            "sortino": 0.6430631216880046,
+            "trades": 150,
+            "win_rate": 0.72,
+            "wins": 108
+          },
+          "timeframe": "15m"
+        },
+        "status": "READY_TO_DOWNLOAD"
+      }
+    }
+  },
+  "report_path": null,
+  "report_verified": null
+}
