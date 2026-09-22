@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "request_id": "c0960096-0922-4c96-8c96-960096009600",
+  "job_id": "42499f3a-8e11-4f57-8b8a-b7ef90270472",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-22T19:35:55.513300+00:00",
+  "started_at": "2026-09-22T19:35:55.514491+00:00",
+  "finished_at": "2026-09-22T19:35:55.521589+00:00",
+  "domain": "trading",
+  "kind": "report-consume",
+  "result": {
+    "domain": "trading",
+    "job_id": "42499f3a-8e11-4f57-8b8a-b7ef90270472",
+    "kind": "report-consume",
+    "latency_ms": 4.27,
+    "ok": true,
+    "report_id": "0b41a94d-4153-41f2-b597-1512dfd57b06",
+    "result": {
+      "chatgpt_processed_at": "2026-09-22T19:35:55.519420+00:00",
+      "chatgpt_status": "PROCESSED",
+      "job_id": "0b41a94d-4153-41f2-b597-1512dfd57b06",
+      "lifecycle": {
+        "chatgpt_processed_at": "2026-09-22T19:35:55.519420+00:00",
+        "chatgpt_status": "PROCESSED",
+        "job_id": "0b41a94d-4153-41f2-b597-1512dfd57b06",
+        "retained_for_user_download": true,
+        "retained_on_server": true,
+        "status": "DOWNLOADED"
+      },
+      "report": {
+        "chatgpt_processed_at": "2026-09-22T19:35:55.519420+00:00",
+        "chatgpt_status": "PROCESSED",
+        "downloaded_at": "2026-09-22T19:30:17.063022+00:00",
+        "job_id": "0b41a94d-4153-41f2-b597-1512dfd57b06",
+        "received_at": "2026-09-22T19:28:26.812106+00:00",
+        "report": {
+          "bars": 107136,
+          "data_source": "DUKASCOPY_BID_HISTORICAL_CANDLES",
+          "domain": "trading",
+          "duration_ms": 7967.4,
+          "evaluation_period": {
+            "from_utc": "2025-09-22T00:00:00+00:00",
+            "to_utc": "2026-09-22T00:00:00+00:00"
+          },
+          "execution_bars": 107136,
+          "execution_timeframe": "5m",
+          "experiment": {
+            "data": {
+              "from_utc": "2025-09-22T00:00:00Z",
+              "source": "DUKASCOPY",
+              "timeframe": "5m",
+              "to_utc": "2026-09-22T00:00:00Z",
+              "warmup_days": 7
+            },
+            "execution": {
+              "commission_rate": "0.00002",
+              "quantity": "100000"
+            },
+            "exit": {
+              "mode": "REVERSE_SIGNAL"
+            },
+            "filters": {
+              "min_signal_gap_bars": 96
+            },
+            "name": "eurusd_1y_5m_original_gap96_reverse_only",
+            "output": {
+              "include_trades": false
+            },
+            "schema_version": 1,
+            "strategy": {
+              "id": "FOREX_EMA_TREND_V001",
+              "signal_direction": "ORIGINAL"
+            }
+          },
+          "experiment_fingerprint": "5d774963230b250635ccb9f0df350df55b1bb357aec218824dcaadb6dfa677c4",
+          "experiment_name": "eurusd_1y_5m_original_gap96_reverse_only",
+          "instrument_id": "EURUSD",
+          "intrabar_execution": false,
+          "job_id": "0b41a94d-4153-41f2-b597-1512dfd57b06",
+          "kind": "backtest",
+          "live_trading": "disabled",
+          "raw_signals": 1417,
+          "report_type": "STRATEGY_RESEARCH",
+          "run_id": "327ad3f0-9a8b-47e1-a3ad-0c39ec6dcf0c",
+          "runner": "strategy_research",
+          "schema_version": 1,
+          "selected_signals": 528,
+          "summary": {
+            "average_loss": -258.45379278688523,
+            "average_win": 245.6516117948718,
+            "average_win_loss": 0.9504662676683185,
+            "commission": "1293.7112800000",
+            "expectancy": 24.425498992805757,
+            "gross_realized_pnl": "8084.00000",
+            "losses": 122,
+            "max_drawdown": 4900.3771,
+            "net_realized_pnl": "6790.2887200000",
+            "performance_metrics_basis": "closed_trade_net_pnl_after_trade_commission",
+            "profit_factor": 1.215350309477522,
+            "sharpe": 1.0300530782059523,
+            "sortino": 1.373646978778732,
+            "trades": 278,
+            "win_rate": 0.5611510791366906,
+            "wins": 156
+          },
+          "timeframe": "5m"
+        },
+        "status": "DOWNLOADED"
+      }
+    }
+  },
+  "report_path": null,
+  "report_verified": null
+}
