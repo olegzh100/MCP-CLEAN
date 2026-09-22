@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "48484848-0922-4a48-8b48-484848484848",
+  "job_id": "f89e1aed-b959-4d73-a1c2-67fe74728138",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-09-22T19:34:14.777464+00:00",
+  "started_at": "2026-09-22T19:34:14.778592+00:00",
+  "finished_at": "2026-09-22T19:34:23.152948+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/f89e1aed-b959-4d73-a1c2-67fe74728138",
+  "report_verified": true
+}
