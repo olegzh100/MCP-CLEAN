@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "request_id": "d4080000-0922-4d08-ad08-000000000008",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "strategy_research",
+    "experiment": {
+      "schema_version": 1,
+      "name": "stability_P2_C_5m_gap36_1mexec",
+      "strategy": {
+        "id": "FOREX_EMA_TREND_V001",
+        "signal_direction": "INVERTED"
+      },
+      "data": {
+        "source": "TINVEST",
+        "timeframe": "5m",
+        "from_utc": "2025-12-18T07:30:00Z",
+        "to_utc": "2026-03-18T07:30:00Z",
+        "warmup_days": 7,
+        "execution_timeframe": "1m"
+      },
+      "filters": {
+        "min_signal_gap_bars": 36
+      },
+      "exit": {
+        "mode": "TAKE_PROFIT_STOP_LOSS_OR_REVERSE",
+        "take_profit_points": "2.5",
+        "stop_loss_points": "12"
+      },
+      "execution": {
+        "commission_rate": "0.0002",
+        "quantity": "1"
+      },
+      "output": {
+        "include_trades": false
+      }
+    }
+  }
+}
