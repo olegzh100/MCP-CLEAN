@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "request_id": "54d00025-2026-4d40-8e25-000000000025",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "strategy_research",
+    "experiment": {
+      "schema_version": 1,
+      "name": "ema20_60_original_5m_postdeploy_probe",
+      "strategy": {
+        "id": "FOREX_EMA_TREND_V001",
+        "signal_direction": "ORIGINAL"
+      },
+      "data": {
+        "source": "TINVEST",
+        "from_utc": "2026-09-10T00:00:00Z",
+        "to_utc": "2026-09-18T00:00:00Z",
+        "warmup_days": 2,
+        "timeframe": "5m"
+      },
+      "filters": {
+        "min_signal_gap_bars": 0
+      },
+      "exit": {
+        "mode": "REVERSE_SIGNAL"
+      },
+      "execution": {
+        "commission_rate": "0.0002",
+        "quantity": "1"
+      },
+      "output": {
+        "include_trades": false
+      }
+    }
+  }
+}
