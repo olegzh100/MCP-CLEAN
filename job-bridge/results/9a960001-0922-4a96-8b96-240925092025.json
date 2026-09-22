@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "9a960001-0922-4a96-8b96-240925092025",
+  "job_id": "c92c14a5-c4dc-45d0-a231-a92097807fb5",
+  "status": "FAILED",
+  "error": "RuntimeError: Dukascopy request failed for 2024-09-26: HTTP 503",
+  "created_at": "2026-09-22T19:51:48.265946+00:00",
+  "started_at": "2026-09-22T19:51:48.267633+00:00",
+  "finished_at": "2026-09-22T20:03:56.706930+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/c92c14a5-c4dc-45d0-a231-a92097807fb5",
+  "report_verified": null
+}
