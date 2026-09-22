@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "request_id": "3c839a3e-76e1-4df5-a025-5d43ceeb9b19",
+  "domain": "trading",
+  "kind": "backtest",
+  "parameters": {
+    "runner": "strategy_research",
+    "experiment": {
+      "schema_version": 1,
+      "name": "eurusd_5m_original_reverse_only_180d",
+      "strategy": {
+        "id": "FOREX_EMA_TREND_V001",
+        "signal_direction": "ORIGINAL"
+      },
+      "data": {
+        "source": "DUKASCOPY",
+        "from_utc": "2026-03-26T00:00:00Z",
+        "to_utc": "2026-09-22T00:00:00Z",
+        "warmup_days": 7,
+        "timeframe": "5m"
+      },
+      "filters": {
+        "min_signal_gap_bars": 0
+      },
+      "exit": {
+        "mode": "REVERSE_SIGNAL"
+      },
+      "execution": {
+        "commission_rate": "0.00002",
+        "quantity": "100000"
+      },
+      "output": {
+        "include_trades": false
+      }
+    }
+  }
+}
