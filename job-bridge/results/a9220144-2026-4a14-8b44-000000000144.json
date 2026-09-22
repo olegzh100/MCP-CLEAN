@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "a9220144-2026-4a14-8b44-000000000144",
+  "job_id": "0e55fc4b-379e-41dc-853a-56b63b0f4990",
+  "status": "FAILED",
+  "error": "RuntimeError: T-Invest GetCandles failed: HTTP 429: ",
+  "created_at": "2026-09-22T11:35:41.306415+00:00",
+  "started_at": "2026-09-22T11:35:41.307368+00:00",
+  "finished_at": "2026-09-22T11:35:45.484533+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/0e55fc4b-379e-41dc-853a-56b63b0f4990",
+  "report_verified": null
+}
