@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "51a00003-2026-4a10-8b03-000000000003",
+  "job_id": "d12122c2-c13a-4e89-8f35-b1d83d8badbe",
+  "status": "FAILED",
+  "error": "ValueError: unsupported exit fields",
+  "created_at": "2026-09-22T09:30:23.641016+00:00",
+  "started_at": "2026-09-22T09:30:23.644161+00:00",
+  "finished_at": "2026-09-22T09:30:23.645609+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/d12122c2-c13a-4e89-8f35-b1d83d8badbe",
+  "report_verified": null
+}
