@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "54d00005-2026-4d40-8e05-000000000005",
+  "job_id": "dca04c78-deac-466c-9e84-a84637a3a7f4",
+  "status": "FAILED",
+  "error": "ValueError: unsupported data fields",
+  "created_at": "2026-09-22T10:45:27.565098+00:00",
+  "started_at": "2026-09-22T10:45:27.567489+00:00",
+  "finished_at": "2026-09-22T10:45:27.568604+00:00",
+  "domain": "trading",
+  "kind": "backtest",
+  "result": null,
+  "report_path": "/trading-api/paper/backtests/dca04c78-deac-466c-9e84-a84637a3a7f4",
+  "report_verified": null
+}
