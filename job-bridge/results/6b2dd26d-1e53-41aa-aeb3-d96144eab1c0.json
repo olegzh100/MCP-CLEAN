@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "6b2dd26d-1e53-41aa-aeb3-d96144eab1c0",
+  "job_id": null,
+  "status": "REJECTED",
+  "error": "ValueError: request keys mismatch",
+  "created_at": null,
+  "started_at": null,
+  "finished_at": null,
+  "domain": null,
+  "kind": null,
+  "result": null,
+  "report_path": null,
+  "report_verified": null
+}
