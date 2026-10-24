@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "request_id": "2f657b14-1024-4b6f-9d83-3e20a1548902",
+  "job_id": "ef22bf03-2d65-4334-83cc-b4af969b2488",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-10-24T17:01:07.405509+00:00",
+  "started_at": "2026-10-24T17:01:07.409336+00:00",
+  "finished_at": "2026-10-24T17:01:07.449394+00:00",
+  "domain": "crm",
+  "kind": "diagnostics",
+  "result": {
+    "checks": {
+      "endpoint": "http://127.0.0.1:8787/health",
+      "health_http": 200,
+      "health_latency_ms": 39.34
+    },
+    "domain": "crm",
+    "health": {
+      "status": "ok"
+    },
+    "job_id": "ef22bf03-2d65-4334-83cc-b4af969b2488",
+    "kind": "diagnostics",
+    "ok": true
+  },
+  "report_path": null,
+  "report_verified": null
+}
