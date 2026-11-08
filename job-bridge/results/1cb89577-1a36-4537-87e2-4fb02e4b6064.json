@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "1cb89577-1a36-4537-87e2-4fb02e4b6064",
+  "job_id": null,
+  "status": "REJECTED",
+  "error": "ValueError: this job accepts no parameters",
+  "created_at": null,
+  "started_at": null,
+  "finished_at": null,
+  "domain": null,
+  "kind": null,
+  "result": null,
+  "report_path": null,
+  "report_verified": null
+}
