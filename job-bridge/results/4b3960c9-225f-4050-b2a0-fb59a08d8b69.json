@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "4b3960c9-225f-4050-b2a0-fb59a08d8b69",
+  "job_id": null,
+  "status": "REJECTED",
+  "error": "ValueError: job type is not allowed",
+  "created_at": null,
+  "started_at": null,
+  "finished_at": null,
+  "domain": null,
+  "kind": null,
+  "result": null,
+  "report_path": null,
+  "report_verified": null
+}
