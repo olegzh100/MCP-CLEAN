@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "request_id": "f718e5ad-77bd-4f81-844e-73ab66c67130",
+  "job_id": "7edf8edc-4922-4b71-a33d-5e46d25e2428",
+  "status": "FAILED",
+  "error": "RuntimeError: CRM check failed (exit=1)",
+  "created_at": "2026-11-08T13:41:36.288690+00:00",
+  "started_at": "2026-11-08T13:41:36.290670+00:00",
+  "finished_at": "2026-11-08T13:42:06.667426+00:00",
+  "domain": "crm",
+  "kind": "test",
+  "result": null,
+  "report_path": null,
+  "report_verified": null
+}
