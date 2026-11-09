@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "request_id": "cdc6e188-16b4-446b-96a4-033aeef6d197",
+  "job_id": "1426eee3-0773-45f9-8f5b-99d57d3d8477",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-11-09T10:33:40.013705+00:00",
+  "started_at": "2026-11-09T10:33:40.014753+00:00",
+  "finished_at": "2026-11-09T10:34:08.958571+00:00",
+  "domain": "crm",
+  "kind": "test",
+  "result": {
+    "domain": "crm",
+    "duration_ms": 28942.65,
+    "exit_code": 0,
+    "job_id": "1426eee3-0773-45f9-8f5b-99d57d3d8477",
+    "kind": "test",
+    "ok": true,
+    "stderr_lines": 0,
+    "stdout_lines": 0
+  },
+  "report_path": null,
+  "report_verified": null
+}
