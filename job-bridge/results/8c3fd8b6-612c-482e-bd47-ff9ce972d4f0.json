@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "request_id": "8c3fd8b6-612c-482e-bd47-ff9ce972d4f0",
+  "job_id": "467be8e5-7411-4e72-8c06-55a9ec95ad67",
+  "status": "SUCCEEDED",
+  "error": null,
+  "created_at": "2026-11-09T15:18:31.861142+00:00",
+  "started_at": "2026-11-09T15:18:31.863175+00:00",
+  "finished_at": "2026-11-09T15:19:25.531748+00:00",
+  "domain": "crm",
+  "kind": "full-check",
+  "result": {
+    "checked_sha": "70e1ffb889e1e2a2d00d7a6f2c91efdd2534415e",
+    "checks": [
+      {
+        "duration_ms": 11.54,
+        "exit_code": 0,
+        "name": "git-status",
+        "stderr_lines": 0,
+        "stdout_lines": 0
+      },
+      {
+        "duration_ms": 28729.1,
+        "exit_code": 0,
+        "name": "backend-test",
+        "stderr_lines": 0,
+        "stdout_lines": 0
+      },
+      {
+        "duration_ms": 24912.25,
+        "exit_code": 0,
+        "name": "build",
+        "stderr_lines": 0,
+        "stdout_lines": 0
+      }
+    ],
+    "domain": "crm",
+    "job_id": "467be8e5-7411-4e72-8c06-55a9ec95ad67",
+    "kind": "full-check",
+    "ok": true
+  },
+  "report_path": null,
+  "report_verified": null
+}
